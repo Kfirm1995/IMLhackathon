@@ -3,7 +3,6 @@ import numpy as np
 from ast import literal_eval
 
 
-
 def load_data(filename) -> pd.DataFrame:
     """
     Load house prices dataset and preprocess data.
@@ -19,39 +18,24 @@ def load_data(filename) -> pd.DataFrame:
 
 
 def clean_data(df: pd.DataFrame):
-
     # dropping duplicates
     df = df.drop_duplicates()
+    df = handle_id(df)
+    df = handle_belongs_to_collection(df)
+    df = handle_budget(df)
+    df = handle_genres(df)
+    df = handle_homepage(df)
+    df = handle_original_languages(df)
+    df = handle_original_title(df)
+    df = handle_overview(df)
+    df = handle_vote_average(df)
+    df = handle_vote_count(df)
+    df = handle_production_companies(df)
 
-    # removing ids
-    df = df.drop("id", 1)
-
-    # adding column of boolean belongs to collection
-    df[["is_belongs_to_collection"]] = df[["belongs_to_collection"]].notnull().astype(int)
-
-    # df['belongs_to_collection'] = df['belongs_to_collection'].fillna(dict).apply(literal_eval)
-    # literal_eval(df[[]])
-    # df['belongs_to_collection'] = df['belongs_to_collection'].apply(lambda x: [e['id'] for e in x] if isinstance(x, list) else [])
-
-
-
-    # budget stay as it is
-
-    # genre
-    df = get_dummies_for_uniques(df, 'genres')
-
-    # change homepage feature to boolean is com
-    df['homepage'] = df['homepage'].map(lambda x: 1 if '.com' in str(x) else 0)
-
-    # original languages- dummies
-    df = encode_one_hot(df, 'original_language')
-
-    #
+    # drop original title
 
     # production companies
     # df = get_dummies_for_uniques(df, 'production_companies') //todo improve
-
-
 
     # y
     y = df.revenue
@@ -59,6 +43,101 @@ def clean_data(df: pd.DataFrame):
     return df, y
 
 
+def handle_id(df: pd.DataFrame) -> pd.DataFrame:
+    return df.drop("id", 1)
+
+
+def handle_belongs_to_collection(df: pd.DataFrame) -> pd.DataFrame:
+    df[["is_belongs_to_collection"]] = df[["belongs_to_collection"]].notnull().astype(int)
+    return df
+
+
+def handle_budget(df: pd.DataFrame) -> pd.DataFrame:
+    return df
+
+
+def handle_genres(df: pd.DataFrame) -> pd.DataFrame:
+    return get_dummies_for_uniques(df, 'genres')
+
+
+def handle_homepage(df: pd.DataFrame) -> pd.DataFrame:
+    df['homepage'] = df['homepage'].map(lambda x: 1 if '.com' in str(x) else 0)
+    return df
+
+
+def handle_original_languages(df: pd.DataFrame) -> pd.DataFrame:
+    return encode_one_hot(df, 'original_language')
+
+
+def handle_original_title(df: pd.DataFrame) -> pd.DataFrame:
+    return df
+
+
+def handle_overview(df: pd.DataFrame) -> pd.DataFrame:
+    return df
+
+
+def handle_vote_average(df: pd.DataFrame) -> pd.DataFrame:
+    return df
+
+
+def handle_vote_count(df: pd.DataFrame) -> pd.DataFrame:
+    return df
+
+
+def handle_production_companies(df: pd.DataFrame) -> pd.DataFrame:
+    return df
+
+
+def handle_production_countries(df: pd.DataFrame) -> pd.DataFrame:
+    return df
+
+
+def handle_release_date(df: pd.DataFrame) -> pd.DataFrame:
+    return df
+
+
+def handle_runtime(df: pd.DataFrame) -> pd.DataFrame:
+    return df
+
+
+def handle_spoken_languages(df: pd.DataFrame) -> pd.DataFrame:
+    return df
+
+
+def handle_status(df: pd.DataFrame) -> pd.DataFrame:
+    return df
+
+
+def handle_tagline(df: pd.DataFrame) -> pd.DataFrame:
+    return df
+
+
+def handle_title(df: pd.DataFrame) -> pd.DataFrame:
+    return df
+
+
+def handle_keywords(df: pd.DataFrame) -> pd.DataFrame:
+    return df
+
+
+def handle_cast(df: pd.DataFrame) -> pd.DataFrame:
+    return df
+
+
+def handle_crew(df: pd.DataFrame) -> pd.DataFrame:
+    return df
+
+
+def handle_release_date(df: pd.DataFrame) -> pd.DataFrame:
+    return df
+
+
+def handle_revenue(df: pd.DataFrame) -> pd.DataFrame:
+    return df
+
+
+###########################
 
 def get_dummies_for_uniques(df, feature: str):
     df['new'] = df[feature].apply(literal_eval)
@@ -79,11 +158,6 @@ def encode_one_hot(df, feature: str):
     genre_dummies = raw_dummies.sum(level=0)
     df = pd.concat([df, genre_dummies], axis=1)
     return df
-
-
-
-
-
 
     # for c in ["price", "sqft_living", "sqft_lot", "sqft_above", "yr_built",
     #           "sqft_living15", "sqft_lot15"]:
