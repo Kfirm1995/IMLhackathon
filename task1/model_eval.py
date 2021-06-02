@@ -7,6 +7,7 @@ from sklearn.kernel_ridge import KernelRidge
 from sklearn.svm import SVR
 from sklearn.tree import DecisionTreeRegressor
 import pickle
+import matplotlib.pyplot as plt
 # from parse import get_train_test
 
 
@@ -14,24 +15,20 @@ def fit(model, x_train, y_train):
     return model.fit(x_train, y_train)
 
 
-def evaluate(models, x_test, y_test):
+def plot_results(all_rss, model_names):
+    fig = plt.figure(figsize=(10, 5))
+    plt.bar(model_names, all_rss, color='maroon', width=0.4)
+    plt.xlabel("model")
+    plt.ylabel("rss")
+    plt.title("RSS per model")
+    plt.show()
+    plt.waitforbuttonpress(-1)
 
-    pass
 
-def save_rss(fitted_model, model_name, x_test, y_test):
-    # TODO: return results.
-    rss = fitted_model.score(x_test, y_test)
+def save_rss(fitted_model, model_name, rss):
     print(f"model rss: \n {rss}")
     with open(f'{model_name}_{rss}.pkl', 'wb') as fid:
         pickle.dump(fitted_model, fid)
-
-    # load it again
-    # with open('my_dumped_classifier.pkl', 'rb') as fid:
-    #     gnb_loaded = pickle.load(fid)
-
-
-def save_results(fitted_model, model_name, results):
-    pass
 
 
 def main():
@@ -44,15 +41,20 @@ def main():
     DecisionTreeRegressor(random_state=0)
     models = [linear_regression, ridge_regression, ridge_cv, kernel_ridge, svr, DecisionTreeRegressor]
     model_names = ['linear_regression', 'ridge_regression', 'ridge_cv', 'kernel_ridge', 'svr', 'regression_tree']
+    fitted_models = []
+    all_rss = []
     for model, model_name in zip(models, model_names):
-        fitted_model = fit(model=model, x_train=x_train, y_train=y_train)
-        results = evaluate(fitted_model=fitted_model, x_test=x_test, y_test=y_test)
-        save_results(fitted_model, model_name, results)
-    pass
+        fitted_model = model.fit(X=x_train, y=y_train)
+        fitted_models.append(fitted_model)
+        rss = fitted_model.score(x_test, y_test)
+        all_rss.append(rss)
+        save_rss(fitted_model=fitted_model, model_name=model_name, rss=rss)
+
+    plot_results(all_rss=all_rss, model_names=model_names)
 
 
 if __name__ == '__main__':
     # TODO:
     # train_data, test_data = ...
     train_data, test_data = None, None
-    main(train_data, test_data)
+    main()
