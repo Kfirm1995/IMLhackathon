@@ -13,6 +13,10 @@ def load_data(filename) -> pd.DataFrame:
     return pd.read_csv(filename)
 
 
+# todo remove revenue zero lines
+# todo dummies for belongs to collection
+# todo add feature quarter of release
+
 
 def clean_data(df: pd.DataFrame):
 
@@ -23,26 +27,27 @@ def clean_data(df: pd.DataFrame):
     df = df.drop("id", 1)
 
     # adding column of boolean belongs to collection
-
     df[["is_belongs_to_collection"]] = df[["belongs_to_collection"]].notnull().astype(int)
 
-    # todo dummies for categorial
     # df['belongs_to_collection'] = df['belongs_to_collection'].fillna(dict).apply(literal_eval)
     # literal_eval(df[[]])
     # df['belongs_to_collection'] = df['belongs_to_collection'].apply(lambda x: [e['id'] for e in x] if isinstance(x, list) else [])
 
 
-    # df[["belongs_to_collection"]]  = pd.get_dummies(df.set_index("belongs_to_collection")).max(level=0).reset_index()
 
     # budget stay as it is
 
     # genre
-    df['genres'] = df['genres'].apply(literal_eval)
-    df['genres'] = df['genres'] \
-        .apply(lambda x: [e['id'] for e in x] if isinstance(x, list) else [])
+    df = get_dummies_for_uniques(df, 'genres')
+
+    # change homepage feature to boolean is com
+    # df['homepage'] = df['homepage'].apply(lambda x: 1 if ".com" in x else 0)
 
 
-    # todo revenue zero remove
+    # production companies
+    # df = get_dummies_for_uniques(df, 'production_companies') //todo improve
+
+
 
     # y
     y = df.revenue
@@ -51,8 +56,6 @@ def clean_data(df: pd.DataFrame):
 
 
 
-def dummies_for_unique_values(df, id, ):
-    pass
 
 
 
@@ -88,3 +91,15 @@ def dummies_for_unique_values(df, id, ):
     # df = df[df["sqft_lot15"] < 500000]
     #
     # df.insert(0, 'intercept', 1, True)
+
+
+def get_dummies_for_uniques(df, feature: str):
+    df['new_genres'] = df[feature].apply(literal_eval)
+    df['genre_names'] = df['new_genres'] \
+        .apply(lambda x: [e['name'] for e in x] if isinstance(x, list) else [])
+    genres_df = pd.DataFrame(df['genre_names'].tolist())
+    stacked_genres = genres_df.stack()
+    raw_dummies = pd.get_dummies(stacked_genres)
+    genre_dummies = raw_dummies.sum(level=0)
+    df = pd.concat([df, genre_dummies], axis=1)
+    return df
