@@ -1,0 +1,8 @@
+####
+features:
+1. id - > remove
+2. belongs_to_collection: id ---> one hot enoding.
+3. budget: probably stays budget, maybe add log budget!
+4. genre: one hot.
+5. does end in .com or .org not? binary has a website or not.
+6.
