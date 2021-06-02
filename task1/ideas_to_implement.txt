@@ -5,4 +5,4 @@ features:
 3. budget: probably stays budget, maybe add log budget!
 4. genre: one hot.
 5. does end in .com or .org not? binary has a website or not.
-6.
+6. every budget zero predict as zero
