@@ -41,8 +41,12 @@ def clean_data(df: pd.DataFrame):
     df = get_dummies_for_uniques(df, 'genres')
 
     # change homepage feature to boolean is com
-    # df['homepage'] = df['homepage'].apply(lambda x: 1 if ".com" in x else 0)
+    df['homepage'] = df['homepage'].map(lambda x: 1 if '.com' in str(x) else 0)
 
+    # original languages- dummies
+    df = encode_one_hot(df, 'original_language')
+
+    #
 
     # production companies
     # df = get_dummies_for_uniques(df, 'production_companies') //todo improve
@@ -56,6 +60,25 @@ def clean_data(df: pd.DataFrame):
 
 
 
+def get_dummies_for_uniques(df, feature: str):
+    df['new'] = df[feature].apply(literal_eval)
+    df['names'] = df['new'] \
+        .apply(lambda x: [e['name'] for e in x] if isinstance(x, list) else [])
+    df = encode_one_hot(df, 'names')
+
+    # cleaning after done
+    for col in ['new', 'names', feature]:
+        df = df.drop(col, 1)
+    return df
+
+
+def encode_one_hot(df, feature: str):
+    genres_df = pd.DataFrame(df[feature].tolist())
+    stacked_genres = genres_df.stack()
+    raw_dummies = pd.get_dummies(stacked_genres)
+    genre_dummies = raw_dummies.sum(level=0)
+    df = pd.concat([df, genre_dummies], axis=1)
+    return df
 
 
 
@@ -91,15 +114,3 @@ def clean_data(df: pd.DataFrame):
     # df = df[df["sqft_lot15"] < 500000]
     #
     # df.insert(0, 'intercept', 1, True)
-
-
-def get_dummies_for_uniques(df, feature: str):
-    df['new_genres'] = df[feature].apply(literal_eval)
-    df['genre_names'] = df['new_genres'] \
-        .apply(lambda x: [e['name'] for e in x] if isinstance(x, list) else [])
-    genres_df = pd.DataFrame(df['genre_names'].tolist())
-    stacked_genres = genres_df.stack()
-    raw_dummies = pd.get_dummies(stacked_genres)
-    genre_dummies = raw_dummies.sum(level=0)
-    df = pd.concat([df, genre_dummies], axis=1)
-    return df
