@@ -5,8 +5,8 @@ if __name__ == '__main__':
     print("Hello world")
     df = load_data("sample_set.csv")
     X, y = clean_data(df)
-    print(X)
-    print(y)
+    # print(X)
+    # print(y)
 
     pd.DataFrame.to_csv(X, "after_clean.csv")
 
