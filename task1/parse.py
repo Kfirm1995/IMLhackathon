@@ -39,7 +39,7 @@ def write_ordinal(df, col, delim=','):
         else:
             dic[comp][0] += rev
             dic[comp][1] += 1
-    arr = [(k, v[0] / v[1]) for k, v in dic.items()]
+    arr = [(k, v[0]/v[1]) for k, v in dic.items()]
     ids = [t[0] for t in arr]
     revs = [t[1] for t in arr]
     splits = np.linspace(min(revs), max(revs), 10)
@@ -48,7 +48,7 @@ def write_ordinal(df, col, delim=','):
         company_id = item[0]
         rev = item[1]
         for i in range(len(splits) - 1):
-            if splits[i] <= rev <= splits[i + 1]:
+            if splits[i] <= rev <= splits[i+1]:
                 ans[company_id] = i + 1
                 break
     with open('company_id_map.json', 'w') as fp:
@@ -90,7 +90,6 @@ def clean_data(df: pd.DataFrame):
 
     return df, y_revenue, y_vote_avg
 
-
 ###########
 
 def handle_first(df: pd.DataFrame) -> pd.DataFrame:
@@ -99,7 +98,6 @@ def handle_first(df: pd.DataFrame) -> pd.DataFrame:
     # df = df[df['release_date'].notna()]
     # df = df[df['revenue'] > 0]
     return df
-
 
 def handle_id(df: pd.DataFrame) -> pd.DataFrame:
     df = df.drop("id", 1)
@@ -229,7 +227,7 @@ def handle_release_date(df: pd.DataFrame) -> pd.DataFrame:
     :param df:
     :return:
     """
-    # todo add decade(5 years) one hot and drop date
+    #todo add decade(5 years) one hot and drop date
     df = df[df['release_date'].notna()]
     df['release_date'] = pd.to_datetime(df['release_date'])
     df['quarter'] = df['release_date'].dt.quarter
@@ -305,6 +303,7 @@ def handle_crew(df: pd.DataFrame) -> pd.DataFrame:
 
 
 def handle_revenue(df: pd.DataFrame) -> pd.DataFrame:
+
     return df
 
 
@@ -328,29 +327,6 @@ def encode_one_hot(df, feature: str):
     genre_dummies = raw_dummies.sum(level=0)
     df = pd.concat([df, genre_dummies], axis=1)
     return df
-
-
-def find_top_five_languages(df, feature: str):
-    list_of_uniques_vals = pd.unique(df[feature])
-    count_dict = {i: 0 for i in list_of_uniques_vals}
-    price_dict = {i: 0 for i in list_of_uniques_vals}
-    for row in df.itertuples():
-        count_dict[row.original_language] += 1
-        price_dict[row.original_language] += row.revenue
-    for lang in list_of_uniques_vals:
-        price_dict[lang] = price_dict[lang] / count_dict[lang]
-    louv = pd.Series(sorted(price_dict, key=price_dict.get))
-    df["top_5"] = (df[feature] == louv[0:5].any())
-    df["worst_5"] = (df[feature] == louv[-5:-1].any())
-    df["top_5"] = df["top_5"].apply(from_bool_to_int)
-    df["worst_5"] = df["worst_5"].apply(from_bool_to_int)
-    return df
-
-
-def from_bool_to_int(bo):
-    if bo == True:
-        return 1
-    return 0
 
     # for c in ["price", "sqft_living", "sqft_lot", "sqft_above", "yr_built",
     #           "sqft_living15", "sqft_lot15"]:
