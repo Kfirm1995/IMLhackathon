@@ -3,7 +3,13 @@ import datetime
 import pandas as pd
 import numpy as np
 from ast import literal_eval
+import re
+import json
+from task1.top_director_dic import *
+from task1.top_actor_dic import *
+import math
 from task1.utils import *
+
 
 
 def load_data(filename) -> pd.DataFrame:
@@ -284,12 +290,12 @@ def handle_keywords(df: pd.DataFrame) -> pd.DataFrame:
 
 
 def handle_cast(df: pd.DataFrame) -> pd.DataFrame:
-    # todo has superstar? find on internet on hot of this
+    df = change_cast_to_actor(df)
     return df
 
 
 def handle_crew(df: pd.DataFrame) -> pd.DataFrame:
-    # todo has good director?
+    change_crew_to_directors(df)
     return df
 
 
@@ -319,6 +325,64 @@ def encode_one_hot(df, feature: str):
     genre_dummies = raw_dummies.sum(level=0)
     df = pd.concat([df, genre_dummies], axis=1)
     return df
+
+# -------------------------- Crew dummies : director ------------------------
+
+def get_directors(x):
+    """classes the directors to classes ,2 is very good 1 is good, 0 is bad"""
+    for i in x:
+        if i['job'] == 'Director':
+            name = i['name']
+            if (name in top_director_dic):
+                return int(math.ceil(top_director_dic[name]/25))
+    return 0
+
+
+def change_crew_to_directors(df):
+    """change crew to classes of top directors columns with dummy values
+    (0 -bad, 1 - good, 2 - very good"""
+    df = df[pd.notnull(df['crew'])]
+    df['crew'] = df['crew'].apply(literal_eval)
+    df['crew'] = df['crew'].apply(get_directors)
+    # Change the field ‘crew’ to ‘director’
+    df.rename(columns={'crew': 'director'}, inplace=True)
+
+    return df
+
+# -------------------------- Cast dummies : actor ------------------------
+
+def get_top_actor_list(x):
+    """change the cast column to list of top actors (from 200 actors) """
+    all_actors = ['temp']
+    for i in x:
+        if i['known_for_department'] == 'Acting':
+            name = i['name']
+            if(name in top_actor_set):
+                all_actors.append(i['name'])
+    return all_actors
+
+
+def encode_one_hot_actor(df, feature: str):
+    """change cast list to dummies of 0 and 1 for each top actor
+    will have now 193 new columns"""
+    genres_df = pd.DataFrame(df[feature].tolist())
+    stacked_genres = genres_df.stack()
+    raw_dummies = pd.get_dummies(stacked_genres)
+    genre_dummies = raw_dummies.sum(level=0)
+    df = pd.concat([df, genre_dummies], axis=1)
+    return df
+
+
+def change_cast_to_actor(df):
+    """change cast to 200 top actors columns with dummy values"""
+    df = df[pd.notnull(df['cast'])]
+    df['cast'] = df['cast'].apply(literal_eval)
+    df['cast'] = df['cast'].apply(get_top_actor_list)
+    df = encode_one_hot_actor(df, 'cast')
+    df = df.drop("cast", 1)
+    df = df.drop("temp", 1)
+    return df
+
 
     # for c in ["price", "sqft_living", "sqft_lot", "sqft_above", "yr_built",
     #           "sqft_living15", "sqft_lot15"]:
