@@ -1,12 +1,8 @@
 import datetime
-
 import pandas as pd
-
 pd.options.mode.chained_assignment = None  # default='warn'
 import numpy as np
 from ast import literal_eval
-import re
-import json
 from task1.top_director_dic import *
 from task1.top_actor_dic import *
 import math
@@ -16,6 +12,8 @@ from task1.utils import *
 top_original_dic = json.load(open("memory_maps/top_original_languages.json"))
 rev_dic = json.load(open("memory_maps/company_id_map_to_rev.json"))
 vote_dic = json.load(open("memory_maps/company_id_map_to_vote.json"))
+top_actor_set = pickle.load(open("memory_maps/top_actor_set.pickle", 'rb'))
+top_director = json.load(open("memory_maps/top_director.json", 'r'))
 
 
 def load_data(filename) -> pd.DataFrame:
@@ -34,7 +32,6 @@ def clean_data(df: pd.DataFrame, stage='train'):
     df = handle_belongs_to_collection(df, stage)
     df = handle_budget(df)
     df = handle_genres(df)
-    # plot_corr_heatmap(df)
     df = handle_homepage(df)
     df = handle_original_languages(df)
     df = handle_original_title(df)
@@ -50,17 +47,11 @@ def clean_data(df: pd.DataFrame, stage='train'):
     df = handle_title(df)
     df = handle_keywords(df)
     df = handle_cast(df)  ## TODO YONATAN
-    # df = handle_cast(df)  ## TODO YONATAN
     df = handle_crew(df)
     df = handle_revenue(df)
-    # drop original title
-
-    # production companies
-    # df = get_dummies_for_uniques(df, 'production_companies') //todo improve
-
-    # y
     y_revenue = df.revenue
     y_vote_avg = df.vote_average
+    plot_corr_heatmap(df)
 
     return df, y_revenue, y_vote_avg
 
@@ -110,18 +101,7 @@ def handle_genres(df: pd.DataFrame) -> pd.DataFrame:
               'History', 'Horror', 'Music', 'Mystery', 'Romance', 'Science Fiction', 'TV Movie', 'Thriller', 'War',
               'Western']
     for g in genres:
-        df[g] = 0
-
-    def in_genre(row, g):
-        row_genres = literal_eval(row)
-        for row_genre in row_genres:
-            if g in row_genre.values():
-                return 1
-        return 0
-
-    for g in genres:
-        df[g] = df['genres'].apply(lambda x: in_genre(x, g))
-
+        df[g] = df['genres'].apply(lambda x: 1 if g in x else 0)
     return df
 
 
@@ -298,12 +278,19 @@ def handle_keywords(df: pd.DataFrame) -> pd.DataFrame:
 
 
 def handle_cast(df: pd.DataFrame) -> pd.DataFrame:
-    df = change_cast_to_actor(df)
+    # df = change_cast_to_actor(df)
+    actors = list(top_actor_set)
+    df['cast'] = df['cast'].fillna("[]")
+    for actor in actors:
+        df[actor] = df['cast'].apply(lambda x: 1 if actor in x else 0)
+    plot_corr_heatmap(df)
     return df
 
 
 def handle_crew(df: pd.DataFrame) -> pd.DataFrame:
-    change_crew_to_directors(df)
+    df['crew'] = df['crew'].fillna("[]")
+    for d in top_director_dic.keys():
+        df[d] = df['crew'].apply(lambda x: math.ceil(x[d]/25) if d in x else 0)
     return df
 
 
