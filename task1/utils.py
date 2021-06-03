@@ -79,7 +79,8 @@ def write_ordinal(df):
     with open('memory_maps/company_id_map_to_vote.json', 'w') as fp:
         json.dump(ans, fp)
     exit(0)
-=======
+
+
 def get_top_n_freq_values(df:pd.DataFrame, n: int, feature: str):
     return df[feature].value_counts()[:n].index.tolist()
->>>>>>> 7a3c17020f0f39bf7ba39cf1552afb3c2104031b
+
