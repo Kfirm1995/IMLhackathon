@@ -328,6 +328,27 @@ def encode_one_hot(df, feature: str):
     df = pd.concat([df, genre_dummies], axis=1)
     return df
 
+def find_top_five_languages(df, feature: str):
+    list_of_uniques_vals = pd.unique(df[feature])
+    count_dict = {i: 0 for i in list_of_uniques_vals}
+    price_dict = {i: 0 for i in list_of_uniques_vals}
+    for row in df.itertuples():
+        count_dict[row.original_language] += 1
+        price_dict[row.original_language] += row.revenue
+    for lang in list_of_uniques_vals:
+        price_dict[lang] = price_dict[lang] / count_dict[lang]
+    louv = pd.Series(sorted(price_dict, key=price_dict.get))
+    df["top_5"] = (df[feature] == louv[0:5].any())
+    df["worst_5"] = (df[feature] == louv[-5:-1].any())
+    df["top_5"] = df["top_5"].apply(from_bool_to_int)
+    df["worst_5"] = df["worst_5"].apply(from_bool_to_int)
+    return df
+
+def from_bool_to_int(bo):
+    if bo == True:
+        return 1
+    return 0
+
     # for c in ["price", "sqft_living", "sqft_lot", "sqft_above", "yr_built",
     #           "sqft_living15", "sqft_lot15"]:
     #     df = df[df[c] > 0]
