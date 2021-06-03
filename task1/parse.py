@@ -21,6 +21,7 @@ def load_data(filename) -> pd.DataFrame:
 
 def clean_data(df: pd.DataFrame):
     df = handle_first(df)
+    df = handle_spoken_languages(df)
     df = handle_id(df)
     df = handle_belongs_to_collection(df)
     df = handle_budget(df)
