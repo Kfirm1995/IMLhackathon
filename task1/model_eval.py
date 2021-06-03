@@ -51,8 +51,8 @@ def save_mse(fitted_model, model_name, mse):
 
 
 def main():
-    df = load_data("sample_set.csv")
-    df, y_revenue, y_vote_avg = clean_data(df, stage='train')
+    df = load_data("test_set.csv")
+    df, y_revenue, y_vote_avg = clean_data(df, stage='test')
     x_train, x_test, y_train, y_test = train_test_split(df, y_revenue, test_size=0.10, random_state=42)
     linear_regression = LinearRegression()
     random_forest = RandomForestRegressor()
