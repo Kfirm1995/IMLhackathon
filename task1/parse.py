@@ -21,7 +21,7 @@ def load_data(filename) -> pd.DataFrame:
 # tod
 
 
-def clean_data(df: pd.DataFrame):
+def clean_data(df: pd.DataFrame, stage='train'):
     df = handle_first(df)
     df = handle_id(df)
     df = handle_belongs_to_collection(df)
@@ -190,7 +190,7 @@ def handle_production_companies(df: pd.DataFrame) -> pd.DataFrame:
     df['company_id_revenue_batch'] = df['production_companies'].map(lambda x: score_by_json_st_rev(x))
     df['company_id_vote_batch'] = df['production_companies'].map(lambda x: score_by_json_st_vote(x))
     df = df.drop('production_companies', axis=1)
-    plot_corr_heatmap(df)
+    # plot_corr_heatmap(df)
     return df
 
 
@@ -241,8 +241,10 @@ def handle_spoken_languages(df: pd.DataFrame) -> pd.DataFrame:
     :param df:
     :return:
     """
+
     # todo correlate offline and remain top five + one hot
-    df = get_dummies_for_uniques(df, 'spoken_languages', 'iso_639_1')
+    df = df.drop('spoken_languages', axis=1)
+    # df = get_dummies_for_uniques(df, 'spoken_languages', 'iso_639_1')
     return df
 
 
@@ -300,11 +302,13 @@ def handle_revenue(df: pd.DataFrame) -> pd.DataFrame:
 def get_dummies_for_uniques(df: pd.DataFrame, feature: str, value: str):
     df['new'] = df[feature].apply(literal_eval)
     df['names'] = df['new'].apply(lambda x: [e[value] for e in x] if isinstance(x, list) else [])
+    # write_best_langs(df)
     df = encode_one_hot(df, 'names')
 
     # cleaning after done
     for col in ['new', 'names', feature]:
         df = df.drop(col, 1)
+    # plot_corr_heatmap(df)
     return df
 
 

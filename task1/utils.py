@@ -84,3 +84,19 @@ def write_ordinal(df):
 def get_top_n_freq_values(df:pd.DataFrame, n: int, feature: str):
     return df[feature].value_counts()[:n].index.tolist()
 
+def write_best_langs(df):
+    dict_rev = {}
+    for i in range(len(df)):
+        for lang in df.iloc[i]['new']:
+            if lang['iso_639_1'] in dict_rev:
+                dict_rev[lang['iso_639_1']][0] += df.iloc[i]['revenue']
+                dict_rev[lang['iso_639_1']][1] += 1
+            else:
+                dict_rev[lang['iso_639_1']] = [df.iloc[i]['revenue'], 1]
+    dict_rev = {key: val[0]/val[1] for key, val in dict_rev.items()}
+    print(sorted(list(dict_rev.items()), key=lambda tup: tup[1])[-10:-1])
+    exit(0)
+
+
+    pass
+
