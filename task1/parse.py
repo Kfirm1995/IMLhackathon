@@ -32,7 +32,7 @@ def clean_data(df: pd.DataFrame, stage='train'):
     df = handle_id(df)
     df = handle_belongs_to_collection(df)
     df = handle_budget(df)
-    df = handle_genres(df)
+    # df = handle_genres(df)
     df = handle_homepage(df)
     df = handle_original_languages(df)
     df = handle_original_title(df)
@@ -48,8 +48,9 @@ def clean_data(df: pd.DataFrame, stage='train'):
     df = handle_tagline(df)
     df = handle_title(df)
     df = handle_keywords(df)
-    df = handle_cast(df)
+    # df = handle_cast(df)  ## TODO YONATAN
     df = handle_crew(df)
+    plot_corr_heatmap(df)
     df = handle_revenue(df)
     # drop original title
 
@@ -79,7 +80,6 @@ def handle_id(df: pd.DataFrame) -> pd.DataFrame:
 
 
 def handle_belongs_to_collection(df: pd.DataFrame) -> pd.DataFrame:
-    # todo ordinary collection
     df[["is_belongs_to_collection"]] = df[["belongs_to_collection"]].notnull().astype(int)
     return df
 
@@ -125,7 +125,7 @@ def handle_original_languages(df: pd.DataFrame) -> pd.DataFrame:
     :return:
     """
     # todo check most occurrences of languages and change to 1 just on them
-    top_languages = get_top_n_freq_values(df, 5, 'original_language')
+    top_languages = get_top_n_freq_values(df, 5, 'original_language') # TODO: NOAM
     df['original_language'] = df['original_language'].map(lambda x: 1 if x in top_languages else 0)
     return df
 
@@ -167,7 +167,7 @@ def handle_vote_count(df: pd.DataFrame) -> pd.DataFrame:
     :param df:
     :return:
     """
-    # todo check correlation
+    # TODO: NOAM
     return df
 
 
@@ -196,7 +196,6 @@ def handle_production_companies(df: pd.DataFrame) -> pd.DataFrame:
     df['company_id_revenue_batch'] = df['production_companies'].map(lambda x: score_by_json_st_rev(x))
     df['company_id_vote_batch'] = df['production_companies'].map(lambda x: score_by_json_st_vote(x))
     df = df.drop('production_companies', axis=1)
-    # plot_corr_heatmap(df)
     return df
 
 
@@ -207,7 +206,8 @@ def handle_production_countries(df: pd.DataFrame) -> pd.DataFrame:
     :return:
     """
     # todo correlate offline and remain top five + one hot
-    df = get_dummies_for_uniques(df, feature="production_countries", value="iso_3166_1")
+    # df = get_dummies_for_uniques(df, feature="production_countries", value="iso_3166_1")
+    df = df.drop('production_countries', axis=1)
     return df
 
 
@@ -217,11 +217,13 @@ def handle_release_date(df: pd.DataFrame) -> pd.DataFrame:
     :param df:
     :return:
     """
-    df = df[df['release_date'].notna()]
+    df = df[df['release_date'].notna()] ##### TODO!!!!!!!!
 
     df['release_date'] = pd.to_datetime(df['release_date'])
     df['quarter'] = df['release_date'].dt.quarter
     df['year'] = pd.DatetimeIndex(df['release_date']).year
+
+    df['decade'] = df['year'].map(lambda x: x - (x % 5))
 
     # adding days passed released
     today = datetime.datetime.now()
@@ -260,7 +262,7 @@ def handle_status(df: pd.DataFrame) -> pd.DataFrame:
     :param df:
     :return:
     """
-    df = df.drop("status", 1)
+    df = df.drop("status", 1)  ## TODO stage!!!!!!!
     return df
 
 
@@ -341,7 +343,7 @@ def get_directors(x):
 def change_crew_to_directors(df):
     """change crew to classes of top directors columns with dummy values
     (0 -bad, 1 - good, 2 - very good"""
-    df = df[pd.notnull(df['crew'])]
+    df = df[pd.notnull(df['crew'])]   # TODO: ROY!!!!!!
     df['crew'] = df['crew'].apply(literal_eval)
     df['crew'] = df['crew'].apply(get_directors)
     # Change the field ‘crew’ to ‘director’

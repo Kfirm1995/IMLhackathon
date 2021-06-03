@@ -9,23 +9,23 @@ features:
 
 
 todo:
-0. handle first:                                                        Noam
-1. id: done                                                             DROP
-2. belongs_to: for now 0 or 1, maybe do better later.                   Noam
-3. to do log budget:                                                    Noam
-4. genre:                                                               Roy
+0. handle first:                                                        NOAM: adapt to test
+1. id: done                                                             DONE
+2. belongs_to: for now 0 or 1, maybe do better later.                   DONE
+3. to do log budget:                                                    TODO: drop rows where runtime == 0
+4. genre:                                                               Yonatan
 5. homepage: maybe drop?                                                DONE
-6. Check languages with correlation + robustness                        Kfir
+6. Check languages with correlation + robustness                        NOAM: robustness
 7. original_title DROP                                                  DROP
 8. overview for now drop                                                DROP
-9. vote count: check correlation, decide.                               DONE
-10. production companies: Yonatan, map                                  DONE
-11. production_countries: is top5 + one hot                             Kfir
-12. release_date: --> 5 years --> one hot, drop date.                   Noam
-13. quarter --> 1,2,3,4 done                                            Noam
-14. runtime: leave as is                                                LEAVE AS IS
-15. spoken_languages, correlate + leave top5 + one hot.                 Kfir
-16. status: drop                                                        DROP ROWS maybe in train set..
+9. vote count: check correlation, decide.                               NOAM: Add budget/votecount zero
+10. production companies: Yonatan, map                                  DONE: TODO: check bug at noam
+11. production_countries: is top5 + one hot                             DONE
+12. release_date: --> 5 years --> one hot, drop date.                   NOAM: test blabla
+13. quarter --> 1,2,3,4 done                                            DONE
+14. runtime: leave as is                                                NOAM HAVE FUN
+15. spoken_languages, correlate + leave top5 + one hot.                 DONE
+16. status: drop                                                        KFIR
 17. tagline: like overview: for now drop                                DROP
 18. title: length of title, check correlation and maybe drop            DROP
 19. keywords: DROP                                                      DROP
