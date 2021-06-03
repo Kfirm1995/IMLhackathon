@@ -20,4 +20,3 @@ def predict(csv_file):
     pass
 
 
-

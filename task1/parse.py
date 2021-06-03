@@ -1,8 +1,7 @@
 import pandas as pd
 import numpy as np
 from ast import literal_eval
-import re
-import json
+from task1.utils import *
 
 
 def load_data(filename) -> pd.DataFrame:
@@ -18,41 +17,6 @@ def load_data(filename) -> pd.DataFrame:
 # todo dummies for belongs to collection
 # todo add feature quarter of release
 # tod
-
-
-def write_ordinal(df, col, delim=','):
-    y = df['revenue']
-    bad_rows = []
-    for i in range(len(df)):
-        row = df.iloc[i]
-        company_id_row = re.sub("[^0-9]", "", row['production_companies'].split(',')[0])
-        if company_id_row == '':
-            bad_rows.append(i)
-    df = df.drop(bad_rows, axis=0)
-    col = df[col]
-    company_id_col = col.apply(lambda x: int(re.sub("[^0-9]", "", x.split(',')[0])))
-    arr = list(zip(y, company_id_col))
-    dic = {}
-    for rev, comp in arr:
-        if comp not in dic:
-            dic[comp] = [rev, 1]
-        else:
-            dic[comp][0] += rev
-            dic[comp][1] += 1
-    arr = [(k, v[0]/v[1]) for k, v in dic.items()]
-    ids = [t[0] for t in arr]
-    revs = [t[1] for t in arr]
-    splits = np.linspace(min(revs), max(revs), 10)
-    ans = {}
-    for item in arr:
-        company_id = item[0]
-        rev = item[1]
-        for i in range(len(splits) - 1):
-            if splits[i] <= rev <= splits[i+1]:
-                ans[company_id] = i + 1
-                break
-    with open('company_id_map.json', 'w') as fp:
-        json.dump(ans, fp)
 
 
 def clean_data(df: pd.DataFrame):
@@ -92,12 +56,14 @@ def clean_data(df: pd.DataFrame):
 
 ###########
 
+
 def handle_first(df: pd.DataFrame) -> pd.DataFrame:
     df = df.drop_duplicates()
     # todo validate with roy and shemesh
     # df = df[df['release_date'].notna()]
     # df = df[df['revenue'] > 0]
     return df
+
 
 def handle_id(df: pd.DataFrame) -> pd.DataFrame:
     df = df.drop("id", 1)
@@ -137,8 +103,8 @@ def handle_homepage(df: pd.DataFrame) -> pd.DataFrame:
     :param df:
     :return:
     """
-    # todo check if needed
-    df['homepage'] = df['homepage'].map(lambda x: 1 if '.com' in str(x) else 0)
+    df['has_homepage'] = df['homepage'].apply(lambda x: 0 if pd.isna(x) else 1)
+    df = df.drop('homepage', axis=1)
     return df
 
 
@@ -195,18 +161,31 @@ def handle_vote_count(df: pd.DataFrame) -> pd.DataFrame:
 
 
 def handle_production_companies(df: pd.DataFrame) -> pd.DataFrame:
-    # dic = json.load(open("company_id_map.json"))
-    # bad_rows = []
-    # for i in range(len(df)):
-    #     row = df.iloc[i]
-    #     company_id_row = re.sub("[^0-9]", "", row['production_companies'].split(',')[0])
-    #     if company_id_row == '':
-    #         bad_rows.append(i)
-    # df = df.drop(bad_rows, axis=0)
-    #
-    # col = df[col]
-    # company_id_col = col.apply(lambda x: int(re.sub("[^0-9]", "", x.split(',')[0])))
+    """
+    Creates a map from company of production to average vote and average revenue.
+    :param df: data.
+    :return: data['company'] is dropped and instead df['company_id_vote_batch'] and df['company_id_revenue_batch']
+    are added
+    """
+    dic_rev = json.load(open("memory_maps/company_id_map_to_rev.json"))
+    dic_vote = json.load(open("memory_maps/company_id_map_to_vote.json"))
 
+    def score_by_json_st_rev(json_st):
+        company_id_row = re.sub("[^0-9]", "", json_st.split(',')[0])
+        if company_id_row == '':
+            return 1
+        return dic_rev[company_id_row]
+
+    def score_by_json_st_vote(json_st):
+        company_id_row = re.sub("[^0-9]", "", json_st.split(',')[0])
+        if company_id_row == '':
+            return 1
+        return dic_vote[company_id_row]
+
+    df['company_id_revenue_batch'] = df['production_companies'].map(lambda x: score_by_json_st_rev(x))
+    df['company_id_vote_batch'] = df['production_companies'].map(lambda x: score_by_json_st_vote(x))
+    df = df.drop('production_companies', axis=1)
+    plot_corr_heatmap(df)
     return df
 
 
