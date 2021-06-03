@@ -36,3 +36,11 @@ todo:
 
 interesting:
 overview, tagline, keywords.
+
+
+TODO:
+1. all handles no stage=train bullshit.             NOAM
+2. features cast, inflation, zero division.         NOAM
+3. Hyper parameter tuning                           ROY
+4. Predict file                                     YONATAN
+5. Cross Validation                                 YONATAN

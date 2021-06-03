@@ -1,5 +1,6 @@
 import numpy as np
 import pandas as pd
+import os
 from sklearn.metrics import mean_squared_error
 from sklearn.linear_model import LinearRegression
 from sklearn.ensemble import AdaBoostRegressor
@@ -27,22 +28,32 @@ def plot_results(all_rss, model_names):
     fig = plt.figure(figsize=(10, 5))
     plt.bar(model_names, all_rss, color='maroon', width=0.4)
     plt.xlabel("model")
-    plt.ylabel("rss")
-    plt.title("RSS per model")
+    plt.ylabel("MSE")
+    plt.title("MSE per model")
     plt.show()
     plt.waitforbuttonpress(-1)
 
 
-def save_rss(fitted_model, model_name, rss):
-    print(f"model rss: \n {rss}")
-    with open(f'{model_name}_{rss}.pkl', 'wb') as fid:
-        pickle.dump(fitted_model, fid)
+def save_mse(fitted_model, model_name, mse):
+    mse = mse/1e6
+    ls = os.listdir("models")
+    files = [f for f in ls if f.startswith(f'{model_name}_')]
+    if not files:
+        with open(f'{model_name}_{mse}.pkl', 'wb') as fid:
+            pickle.dump(fitted_model, fid)
+    else:
+        best = files[0]
+        mse_best = float(best.split("_")[-1][:-4])
+        if mse <= mse_best:
+            os.remove(os.path.join("models", best))
+            with open(f'models/{model_name}_{mse}.pkl', 'wb') as fid:
+                pickle.dump(fitted_model, fid)
 
 
 def main():
     df = load_data("sample_set.csv")
     df, y_revenue, y_vote_avg = clean_data(df, stage='train')
-    x_train, x_test, y_train, y_test = train_test_split(df, y_vote_avg, test_size=0.10, random_state=42)
+    x_train, x_test, y_train, y_test = train_test_split(df, y_revenue, test_size=0.10, random_state=42)
     linear_regression = LinearRegression()
     random_forest = RandomForestRegressor()
     ridge_regression = Ridge()
@@ -51,20 +62,22 @@ def main():
     kernel_ridge = KernelRidge()
     decision_tree = DecisionTreeRegressor(random_state=0)
     models = [adaboost, linear_regression, random_forest, ridge_regression, decision_tree]
-    model_names = ['adaboost', 'linear_regression', 'random_forest', 'ridge_regression', 'decision_tree']
+    model_names = ['Adaboost', 'Linear_regression', 'Random_forest', 'Ridge_regression', 'Decision_tree']
     fitted_models = []
-    all_rss = []
+    all_mse = []
     for model, model_name in zip(models, model_names):
         fitted_model = model.fit(X=x_train, y=y_train)
         fitted_models.append(fitted_model)
         y_pred = fitted_model.predict(x_test)
-        print(f"MSE: model {model_name} : --------------------- {np.sqrt(mean_squared_error(y_pred, y_test))} ----------------------\n")
+        print(f"----------------------- Model:{model_name} -----------------------")
+        mse = np.sqrt(mean_squared_error(y_pred, y_test))
+        print(f"MSE: {mse}\n")
         rss = fitted_model.score(x_test, y_test)
-        print(f"score: model {model_name} : --------------------- {rss} ----------------------\n")
-        all_rss.append(rss)
-        # save_rss(fitted_model=fitted_model, model_name=model_name, rss=rss)
+        print(f"score: {rss}\n")
+        all_mse.append(mse)
+        save_mse(fitted_model=fitted_model, model_name=model_name, mse=mse)
 
-    plot_results(all_rss=all_rss, model_names=model_names)
+    plot_results(all_rss=all_mse, model_names=model_names)
 
 
 if __name__ == '__main__':

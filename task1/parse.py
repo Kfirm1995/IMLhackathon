@@ -50,21 +50,20 @@ def clean_data(df: pd.DataFrame, stage='train'):
     df = handle_crew(df)
     df = handle_revenue(df)
     # df = handle_inflation(df)
-    df.to_csv("parsed_dataset.csv")
+    # df.to_csv("parsed_dataset.csv")
+    # plot_corr_heatmap(df)
     y_revenue = df.revenue
     y_vote_avg = df.vote_average
     df = df.drop(['revenue', 'vote_average'], axis=1)
     return df, y_revenue, y_vote_avg
 
 
-
-
 def handle_first(df: pd.DataFrame, stage: str) -> pd.DataFrame:
+
     if stage == 'train':
         df = df[df['revenue'].notna()]
         df = df.drop_duplicates()
         df = df[df['revenue'] >= 1000]
-
     return df
 
 
@@ -175,7 +174,7 @@ def handle_production_companies(df: pd.DataFrame) -> pd.DataFrame:
 
     def score_by_json_st(json_st, dic: dict):
         company_id_row = re.sub("[^0-9]", "", json_st.split(',')[0])
-        if company_id_row == '':
+        if company_id_row not in dic:
             return 1
         return dic[company_id_row]
 
@@ -213,7 +212,7 @@ def handle_release_date(df: pd.DataFrame, stage: str) -> pd.DataFrame:
     df['year'] = pd.DatetimeIndex(df['release_date']).year
 
     # adding decade
-    df['decade'] = df['year'].map(lambda x: x - x % 5)
+    df['decade'] = df['year'].map(lambda x: x - x % 10)
 
     # adding days passed released
     today = datetime.datetime.now()
