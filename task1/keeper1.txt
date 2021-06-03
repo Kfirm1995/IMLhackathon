@@ -1,9 +1,14 @@
 import datetime
+
 import pandas as pd
+
 pd.options.mode.chained_assignment = None  # default='warn'
 import numpy as np
-import pickle
 from ast import literal_eval
+import re
+import json
+from task1.top_director_dic import *
+from task1.top_actor_dic import *
 import math
 from task1.utils import *
 
@@ -11,10 +16,6 @@ from task1.utils import *
 top_original_dic = json.load(open("memory_maps/top_original_languages.json"))
 rev_dic = json.load(open("memory_maps/company_id_map_to_rev.json"))
 vote_dic = json.load(open("memory_maps/company_id_map_to_vote.json"))
-top_actor_set = pickle.load(open("memory_maps/top_actor_set.pickle", 'rb'))
-top_director_dic = json.load(open("memory_maps/top_director.json", 'r'))
-inflation_df = pd.read_csv("inflation_data.csv")
-
 
 
 def load_data(filename) -> pd.DataFrame:
@@ -26,36 +27,44 @@ def load_data(filename) -> pd.DataFrame:
     return pd.read_csv(filename)
 
 
+
 def clean_data(df: pd.DataFrame, stage='train'):
     df = handle_first(df, stage)
     df = handle_id(df)
     df = handle_belongs_to_collection(df, stage)
     df = handle_budget(df)
-    df = handle_genres(df)
+    # df = handle_genres(df)
     df = handle_homepage(df)
     df = handle_original_languages(df)
-    df = handle_release_date(df, stage)
     df = handle_original_title(df)
     df = handle_overview(df)
     df = handle_vote_count(df, stage)
     df = handle_production_companies(df)
     df = handle_production_countries(df)
+    df = handle_release_date(df, stage)
     df = handle_runtime(df)
     df = handle_spoken_languages(df)
-    df = handle_status(df, stage)
+    df = handle_status(df)
     df = handle_tagline(df)
     df = handle_title(df)
     df = handle_keywords(df)
-    df = handle_cast(df)
+    plot_corr_heatmap(df)
+    # df = handle_cast(df)  ## TODO YONATAN
     df = handle_crew(df)
     df = handle_revenue(df)
-    # df = handle_inflation(df)
+    # drop original title
+
+    # production companies
+    # df = get_dummies_for_uniques(df, 'production_companies') //todo improve
+
+    # y
     y_revenue = df.revenue
     y_vote_avg = df.vote_average
-    plot_corr_heatmap(df)
+
     return df, y_revenue, y_vote_avg
 
 
+###########
 
 
 def handle_first(df: pd.DataFrame, stage: str) -> pd.DataFrame:
@@ -96,12 +105,8 @@ def handle_genres(df: pd.DataFrame) -> pd.DataFrame:
     :param df:
     :return:
     """
-    df['genres'] = df['genres'].fillna("[]")
-    genres = ['Action', 'Adventure', 'Animation', 'Comedy', 'Crime', 'Documentary', 'Drama', 'Family', 'Fantasy',
-              'History', 'Horror', 'Music', 'Mystery', 'Romance', 'Science Fiction', 'TV Movie', 'Thriller', 'War',
-              'Western']
-    for g in genres:
-        df[g] = df['genres'].apply(lambda x: 1 if g in x else 0)
+    # todo ensure robustness
+    df = get_dummies_for_uniques(df, 'genres', value='name')
     return df
 
 
@@ -170,6 +175,7 @@ def handle_production_companies(df: pd.DataFrame) -> pd.DataFrame:
     are added
     """
 
+
     def score_by_json_st(json_st, dic: dict):
         company_id_row = re.sub("[^0-9]", "", json_st.split(',')[0])
         if company_id_row == '':
@@ -205,8 +211,6 @@ def handle_release_date(df: pd.DataFrame, stage: str) -> pd.DataFrame:
 
     df['release_date'] = pd.to_datetime(df['release_date'])
     df['quarter'] = df['release_date'].dt.quarter
-    df['month'] = pd.DatetimeIndex(df['release_date']).month
-    # plot_corr_heatmap(df)
     df['year'] = pd.DatetimeIndex(df['release_date']).year
 
     # adding decade
@@ -217,7 +221,7 @@ def handle_release_date(df: pd.DataFrame, stage: str) -> pd.DataFrame:
     df['days_from_release'] = df['release_date'].map(lambda x: (today - pd.to_datetime(x)).days)
 
     df = df.drop("release_date", 1)
-    # df = df.drop("year", 1)
+    df = df.drop("year", 1)
 
     return df
 
@@ -241,15 +245,13 @@ def handle_spoken_languages(df: pd.DataFrame) -> pd.DataFrame:
     return df
 
 
-def handle_status(df: pd.DataFrame, stage) -> pd.DataFrame:
+def handle_status(df: pd.DataFrame) -> pd.DataFrame:
     """
     dropping
     :param df:
     :return:
     """
-    if stage == "train":
-        df = df.drop("status", 1)
-
+    df = df.drop("status", 1)  ## TODO stage!!!!!!!
     return df
 
 
@@ -279,19 +281,12 @@ def handle_keywords(df: pd.DataFrame) -> pd.DataFrame:
 
 
 def handle_cast(df: pd.DataFrame) -> pd.DataFrame:
-    # df = change_cast_to_actor(df)
-    actors = list(top_actor_set)
-    df['cast'] = df['cast'].fillna("[]")
-    for actor in actors:
-        df[actor] = df['cast'].apply(lambda x: 1 if actor in x else 0)
-    plot_corr_heatmap(df)
+    df = change_cast_to_actor(df)
     return df
 
 
 def handle_crew(df: pd.DataFrame) -> pd.DataFrame:
-    df['crew'] = df['crew'].fillna("[]")
-    for d in top_director_dic.keys():
-        df[d] = df['crew'].apply(lambda x: math.ceil(x[d]/25) if d in x else 0)
+    change_crew_to_directors(df)
     return df
 
 
@@ -320,22 +315,6 @@ def encode_one_hot(df, feature: str):
     raw_dummies = pd.get_dummies(stacked_genres)
     genre_dummies = raw_dummies.sum(level=0)
     df = pd.concat([df, genre_dummies], axis=1)
-    return df
-
-
-def handle_inflation(df: pd.DataFrame) -> pd.DataFrame:
-    df_a = inflation_df
-    df['temp_year'] = df['year'].map(lambda x: float(x) - 1900)
-    df['inflation_rate'] = df['temp_year'].map(lambda x: inflation_df.at[int(x), 'inflation_rate'])
-
-
-    df['usd_1900'] = df['temp_year'].map(lambda x: inflation_df.at[int(x), 'amount'])
-    df['budget_1900'] = df['budget'] / df['usd_1900']
-
-    df['usd_1900'] = df['temp_year'].map(lambda x: inflation_df.at[int(x), 'amount'])
-    df = df.drop("temp_year", 1)
-    df = df.drop("usd_1900", 1)
-    plot_corr_heatmap(df)
     return df
 
 
@@ -396,3 +375,4 @@ def change_cast_to_actor(df):
     df = df.drop("cast", 1)
     df = df.drop("temp", 1)
     return df
+
