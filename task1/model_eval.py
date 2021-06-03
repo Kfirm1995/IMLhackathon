@@ -2,11 +2,13 @@ import numpy as np
 import pandas as pd
 from sklearn.metrics import mean_squared_error
 from sklearn.linear_model import LinearRegression
+from sklearn.ensemble import AdaBoostRegressor
 from sklearn.linear_model import Ridge
 from sklearn.linear_model import RidgeCV
 from sklearn.kernel_ridge import KernelRidge
 from sklearn.svm import SVR
 from sklearn.tree import DecisionTreeRegressor
+from sklearn.ensemble import RandomForestRegressor
 # import xgboost as xgb
 
 import pickle
@@ -40,15 +42,16 @@ def save_rss(fitted_model, model_name, rss):
 def main():
     df = load_data("sample_set.csv")
     df, y_revenue, y_vote_avg = clean_data(df, stage='train')
-    x_train, x_test, y_train, y_test= train_test_split(df, y_vote_avg, test_size=0.25, random_state=42)
+    x_train, x_test, y_train, y_test = train_test_split(df, y_vote_avg, test_size=0.10, random_state=42)
     linear_regression = LinearRegression()
+    random_forest = RandomForestRegressor()
     ridge_regression = Ridge()
-    ridge_cv = RidgeCV()
+    adaboost = AdaBoostRegressor(random_state=0, n_estimators=10)
+    # ridge_cv = RidgeCV()
     kernel_ridge = KernelRidge()
-    svr = SVR()
-    DecisionTreeRegressor(random_state=0)
-    models = [linear_regression, ridge_regression, ridge_cv, kernel_ridge, svr, DecisionTreeRegressor]
-    model_names = ['linear_regression', 'ridge_regression', 'ridge_cv', 'kernel_ridge', 'svr', 'regression_tree']
+    decision_tree = DecisionTreeRegressor(random_state=0)
+    models = [adaboost, linear_regression, random_forest, ridge_regression, decision_tree]
+    model_names = ['adaboost', 'linear_regression', 'random_forest', 'ridge_regression', 'decision_tree']
     fitted_models = []
     all_rss = []
     for model, model_name in zip(models, model_names):
@@ -57,8 +60,9 @@ def main():
         y_pred = fitted_model.predict(x_test)
         print(f"MSE: model {model_name} : --------------------- {np.sqrt(mean_squared_error(y_pred, y_test))} ----------------------\n")
         rss = fitted_model.score(x_test, y_test)
+        print(f"score: model {model_name} : --------------------- {rss} ----------------------\n")
         all_rss.append(rss)
-        save_rss(fitted_model=fitted_model, model_name=model_name, rss=rss)
+        # save_rss(fitted_model=fitted_model, model_name=model_name, rss=rss)
 
     plot_results(all_rss=all_rss, model_names=model_names)
 

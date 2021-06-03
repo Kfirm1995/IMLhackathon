@@ -50,6 +50,7 @@ def clean_data(df: pd.DataFrame, stage='train'):
     df = handle_crew(df)
     df = handle_revenue(df)
     # df = handle_inflation(df)
+    df.to_csv("parsed_dataset.csv")
     y_revenue = df.revenue
     y_vote_avg = df.vote_average
     df = df.drop(['revenue', 'vote_average'], axis=1)
