@@ -2,9 +2,8 @@ import datetime
 import pandas as pd
 pd.options.mode.chained_assignment = None  # default='warn'
 import numpy as np
+import pickle
 from ast import literal_eval
-from task1.top_director_dic import *
-from task1.top_actor_dic import *
 import math
 from task1.utils import *
 
@@ -46,7 +45,7 @@ def clean_data(df: pd.DataFrame, stage='train'):
     df = handle_tagline(df)
     df = handle_title(df)
     df = handle_keywords(df)
-    df = handle_cast(df)  ## TODO YONATAN
+    df = handle_cast(df)
     df = handle_crew(df)
     df = handle_revenue(df)
     y_revenue = df.revenue
@@ -56,7 +55,6 @@ def clean_data(df: pd.DataFrame, stage='train'):
     return df, y_revenue, y_vote_avg
 
 
-###########
 
 
 def handle_first(df: pd.DataFrame, stage: str) -> pd.DataFrame:
