@@ -32,7 +32,8 @@ def clean_data(df: pd.DataFrame, stage='train'):
     df = handle_id(df)
     df = handle_belongs_to_collection(df)
     df = handle_budget(df)
-    # df = handle_genres(df)
+    df = handle_genres(df)
+    # plot_corr_heatmap(df)
     df = handle_homepage(df)
     df = handle_original_languages(df)
     df = handle_original_title(df)
@@ -48,9 +49,9 @@ def clean_data(df: pd.DataFrame, stage='train'):
     df = handle_tagline(df)
     df = handle_title(df)
     df = handle_keywords(df)
-    # df = handle_cast(df)  ## TODO YONATAN
+    df = handle_cast(df)  ## TODO YONATAN
     df = handle_crew(df)
-    plot_corr_heatmap(df)
+    # plot_corr_heatmap(df)
     df = handle_revenue(df)
     # drop original title
 
@@ -102,8 +103,22 @@ def handle_genres(df: pd.DataFrame) -> pd.DataFrame:
     :param df:
     :return:
     """
-    # todo ensure robustness
-    df = get_dummies_for_uniques(df, 'genres', value='name')
+    genres = ['Action', 'Adventure', 'Animation', 'Comedy', 'Crime', 'Documentary', 'Drama', 'Family', 'Fantasy',
+              'History', 'Horror', 'Music', 'Mystery', 'Romance', 'Science Fiction', 'TV Movie', 'Thriller', 'War',
+              'Western']
+    for g in genres:
+        df[g] = 0
+
+    def in_genre(row, g):
+        row_genres = literal_eval(row)
+        for row_genre in row_genres:
+            if g in row_genre.values():
+                return 1
+        return 0
+
+    for g in genres:
+        df[g] = df['genres'].apply(lambda x: in_genre(x, g))
+
     return df
 
 
