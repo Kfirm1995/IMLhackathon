@@ -16,11 +16,11 @@ def load_data(filename) -> pd.DataFrame:
 # todo remove revenue zero lines
 # todo dummies for belongs to collection
 # todo add feature quarter of release
+# tod
 
 
 def clean_data(df: pd.DataFrame):
-    # dropping duplicates
-    df = df.drop_duplicates()
+    df = handle_first(df)
 
     df = handle_id(df)
     df = handle_belongs_to_collection(df)
@@ -54,6 +54,15 @@ def clean_data(df: pd.DataFrame):
 
     return df, y
 
+
+###########
+
+def handle_first(df: pd.DataFrame) -> pd.DataFrame:
+    df = df.drop_duplicates()
+    # todo validate with roy and shemesh
+    # df = df[df['release_date'].notna()]
+    # df = df[df['revenue'] > 0]
+    return df
 
 def handle_id(df: pd.DataFrame) -> pd.DataFrame:
     df = df.drop("id", 1)
@@ -224,15 +233,17 @@ def handle_keywords(df: pd.DataFrame) -> pd.DataFrame:
 
 
 def handle_cast(df: pd.DataFrame) -> pd.DataFrame:
+    # todo first actor
     return df
 
 
 def handle_crew(df: pd.DataFrame) -> pd.DataFrame:
+    # todo director
     return df
 
 
 def handle_revenue(df: pd.DataFrame) -> pd.DataFrame:
-    # remove revenue
+
     return df
 
 
