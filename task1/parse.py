@@ -85,9 +85,10 @@ def clean_data(df: pd.DataFrame):
     # df = get_dummies_for_uniques(df, 'production_companies') //todo improve
 
     # y
-    y = df.revenue
+    y_revenue = df.revenue
+    y_vote_avg = df.vote_average
 
-    return df, y
+    return df, y_revenue, y_vote_avg
 
 ###########
 
@@ -104,6 +105,7 @@ def handle_id(df: pd.DataFrame) -> pd.DataFrame:
 
 
 def handle_belongs_to_collection(df: pd.DataFrame) -> pd.DataFrame:
+    # todo ordinary collection
     df[["is_belongs_to_collection"]] = df[["belongs_to_collection"]].notnull().astype(int)
     return df
 
@@ -114,6 +116,7 @@ def handle_budget(df: pd.DataFrame) -> pd.DataFrame:
     :param df:
     :return:
     """
+    # todo add log budget
     return df
 
 
@@ -123,6 +126,7 @@ def handle_genres(df: pd.DataFrame) -> pd.DataFrame:
     :param df:
     :return:
     """
+    # todo ensure robustness
     df = get_dummies_for_uniques(df, 'genres', value='name')
     return df
 
@@ -133,6 +137,7 @@ def handle_homepage(df: pd.DataFrame) -> pd.DataFrame:
     :param df:
     :return:
     """
+    # todo check if needed
     df['homepage'] = df['homepage'].map(lambda x: 1 if '.com' in str(x) else 0)
     return df
 
@@ -143,6 +148,7 @@ def handle_original_languages(df: pd.DataFrame) -> pd.DataFrame:
     :param df:
     :return:
     """
+    # todo check most occurrences of languages and change to 1 just on them
     df = encode_one_hot(df, 'original_language')
     return df
 
@@ -153,6 +159,7 @@ def handle_original_title(df: pd.DataFrame) -> pd.DataFrame:
     :param df:
     :return:
     """
+    # todo add length of title string and check corellation (maybe drop)
     df = df.drop("original_title", 1)
     return df
 
@@ -173,6 +180,7 @@ def handle_vote_average(df: pd.DataFrame) -> pd.DataFrame:
     :param df:
     :return:
     """
+    # todo change to y response
     return df
 
 
@@ -182,9 +190,10 @@ def handle_vote_count(df: pd.DataFrame) -> pd.DataFrame:
     :param df:
     :return:
     """
+    # todo check correlation
     return df
 
-# todo shemesh
+
 def handle_production_companies(df: pd.DataFrame) -> pd.DataFrame:
     # dic = json.load(open("company_id_map.json"))
     # bad_rows = []
@@ -207,6 +216,7 @@ def handle_production_countries(df: pd.DataFrame) -> pd.DataFrame:
     :param df:
     :return:
     """
+    # todo correlate offline and remain top five + one hot
     df = get_dummies_for_uniques(df, feature="production_countries", value="iso_3166_1")
     return df
 
@@ -217,9 +227,12 @@ def handle_release_date(df: pd.DataFrame) -> pd.DataFrame:
     :param df:
     :return:
     """
+    #todo add decade(5 years) one hot and drop date
     df = df[df['release_date'].notna()]
     df['release_date'] = pd.to_datetime(df['release_date'])
     df['quarter'] = df['release_date'].dt.quarter
+    df['year'] = df['release_date'].dt.year
+    df = df.drop("release_date", 1)
 
     return df
 
@@ -239,6 +252,7 @@ def handle_spoken_languages(df: pd.DataFrame) -> pd.DataFrame:
     :param df:
     :return:
     """
+    # todo correlate offline and remain top five + one hot
     df = get_dummies_for_uniques(df, 'spoken_languages', 'iso_639_1')
     return df
 
@@ -274,17 +288,17 @@ def handle_title(df: pd.DataFrame) -> pd.DataFrame:
 
 
 def handle_keywords(df: pd.DataFrame) -> pd.DataFrame:
-    # todo counter of keywords
+    df = df.drop("keywords", 1)
     return df
 
 
 def handle_cast(df: pd.DataFrame) -> pd.DataFrame:
-    # todo first actor
+    # todo has superstar? find on internet on hot of this
     return df
 
 
 def handle_crew(df: pd.DataFrame) -> pd.DataFrame:
-    # todo director
+    # todo has good director?
     return df
 
 
