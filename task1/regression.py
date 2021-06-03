@@ -4,9 +4,7 @@
 #     Task 1 - predict movies revenue & ranking
 #
 ################################################
-
-
-
+from task1.parse import load_data
 
 
 def predict(csv_file):
@@ -16,7 +14,9 @@ def predict(csv_file):
     :param csv_file: csv with movies details. Same format as the training dataset csv.
     :return: a tuple - (a python list with the movies revenues, a python list with the movies avg_votes)
     """
-    # df = load_data(csv_file)
+    df = load_data(csv_file)
+    # df = cla
+
     pass
 
 

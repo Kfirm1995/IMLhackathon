@@ -52,7 +52,7 @@ def clean_data(df: pd.DataFrame, stage='train'):
     # df = handle_inflation(df)
     y_revenue = df.revenue
     y_vote_avg = df.vote_average
-    plot_corr_heatmap(df)
+    df = df.drop(['revenue', 'vote_average'], axis=1)
     return df, y_revenue, y_vote_avg
 
 
@@ -73,8 +73,7 @@ def handle_id(df: pd.DataFrame) -> pd.DataFrame:
 
 
 def handle_belongs_to_collection(df: pd.DataFrame, stage: str) -> pd.DataFrame:
-    if stage == 'train':
-        df[["is_belongs_to_collection"]] = df[["belongs_to_collection"]].notnull().astype(int)
+    df[["belongs_to_collection"]] = df[["belongs_to_collection"]].notnull().astype(int)
     return df
 
 
@@ -86,7 +85,8 @@ def handle_budget(df: pd.DataFrame) -> pd.DataFrame:
     """
     # todo add log budget
     df['log_budget'] = df['budget'].map(lambda x: 0 if float(x) < 2 else math.log(float(x)))
-    df['budget/runtime'] = df['budget'] / df['runtime']
+    # df['budget/runtime'] = df['budget'] / df['runtime']
+    # df = df[df['budget/runtime'].notna()]    ##  TODO!!!!!!!!!!!!!!!!!!!
     return df
 
 
@@ -102,6 +102,8 @@ def handle_genres(df: pd.DataFrame) -> pd.DataFrame:
               'Western']
     for g in genres:
         df[g] = df['genres'].apply(lambda x: 1 if g in x else 0)
+
+    df = df.drop("genres", axis=1)
     return df
 
 
@@ -158,7 +160,7 @@ def handle_vote_count(df: pd.DataFrame, stage: str) -> pd.DataFrame:
     if stage == 'train':
         df = df[df['runtime'].notna()]
 
-    df['vote_count/runtime'] = df['vote_count'] / df['runtime']  # todo ensure predict wont get it
+    # df['vote_count/runtime'] = df['vote_count'] / df['runtime']  # todo ensure predict wont get it
     return df
 
 
@@ -284,14 +286,15 @@ def handle_cast(df: pd.DataFrame) -> pd.DataFrame:
     df['cast'] = df['cast'].fillna("[]")
     for actor in actors:
         df[actor] = df['cast'].apply(lambda x: 1 if actor in x else 0)
-    plot_corr_heatmap(df)
+    df = df.drop('cast', axis=1)
     return df
 
 
 def handle_crew(df: pd.DataFrame) -> pd.DataFrame:
     df['crew'] = df['crew'].fillna("[]")
     for d in top_director_dic.keys():
-        df[d] = df['crew'].apply(lambda x: math.ceil(x[d]/25) if d in x else 0)
+        df[d] = df['crew'].apply(lambda x: math.ceil(top_director_dic[d]/25) if d in x else 0)
+    df = df.drop('crew', axis=1)
     return df
 
 
@@ -335,7 +338,6 @@ def handle_inflation(df: pd.DataFrame) -> pd.DataFrame:
     df['usd_1900'] = df['temp_year'].map(lambda x: inflation_df.at[int(x), 'amount'])
     df = df.drop("temp_year", 1)
     df = df.drop("usd_1900", 1)
-    plot_corr_heatmap(df)
     return df
 
 
