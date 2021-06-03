@@ -44,7 +44,7 @@ def clean_data(df: pd.DataFrame, stage='train'):
     df = handle_release_date(df, stage)
     df = handle_runtime(df)
     df = handle_spoken_languages(df)
-    df = handle_status(df)
+    df = handle_status(df,stage)
     df = handle_tagline(df)
     df = handle_title(df)
     df = handle_keywords(df)
@@ -245,13 +245,15 @@ def handle_spoken_languages(df: pd.DataFrame) -> pd.DataFrame:
     return df
 
 
-def handle_status(df: pd.DataFrame) -> pd.DataFrame:
+def handle_status(df: pd.DataFrame, stage) -> pd.DataFrame:
     """
     dropping
     :param df:
     :return:
     """
-    df = df.drop("status", 1)  ## TODO stage!!!!!!!
+    if stage=="train":
+        df = df.drop("status", 1)
+
     return df
 
 
