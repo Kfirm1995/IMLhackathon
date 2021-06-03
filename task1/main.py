@@ -8,5 +8,7 @@ if __name__ == '__main__':
     print(X)
     print(y)
 
+    pd.DataFrame.to_csv(X, "after_clean.csv")
+
 
 
