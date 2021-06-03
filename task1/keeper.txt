@@ -1,15 +1,12 @@
-import datetime
+import math
 
-import pandas as pd
 import numpy as np
 from ast import literal_eval
-import re
-import json
-from task1.top_director_dic import *
-from task1.top_actor_dic import *
-import math
 from task1.utils import *
+from task1.plays.encode_json import *
 
+pd.options.mode.chained_assignment = None  # default='warn'
+import datetime
 
 
 def load_data(filename) -> pd.DataFrame:
@@ -27,8 +24,43 @@ def load_data(filename) -> pd.DataFrame:
 # tod
 
 
+def write_ordinal(df, col, delim=','):
+    y = df['revenue']
+    bad_rows = []
+    for i in range(len(df)):
+        row = df.iloc[i]
+        company_id_row = re.sub("[^0-9]", "", row['production_companies'].split(',')[0])
+        if company_id_row == '':
+            bad_rows.append(i)
+    df = df.drop(bad_rows, axis=0)
+    col = df[col]
+    company_id_col = col.apply(lambda x: int(re.sub("[^0-9]", "", x.split(',')[0])))
+    arr = list(zip(y, company_id_col))
+    dic = {}
+    for rev, comp in arr:
+        if comp not in dic:
+            dic[comp] = [rev, 1]
+        else:
+            dic[comp][0] += rev
+            dic[comp][1] += 1
+    arr = [(k, v[0] / v[1]) for k, v in dic.items()]
+    ids = [t[0] for t in arr]
+    revs = [t[1] for t in arr]
+    splits = np.linspace(min(revs), max(revs), 10)
+    ans = {}
+    for item in arr:
+        company_id = item[0]
+        rev = item[1]
+        for i in range(len(splits) - 1):
+            if splits[i] <= rev <= splits[i + 1]:
+                ans[company_id] = i + 1
+                break
+    with open('company_id_map.json', 'w') as fp:
+        json.dump(ans, fp)
+
+
 def clean_data(df: pd.DataFrame):
-    df = handle_first(df)
+    df = handle_outliers(df)
     df = handle_id(df)
     df = handle_belongs_to_collection(df)
     df = handle_budget(df)
@@ -65,8 +97,14 @@ def clean_data(df: pd.DataFrame):
 
 ###########
 
-
-def handle_first(df: pd.DataFrame) -> pd.DataFrame:
+def handle_outliers(df: pd.DataFrame) -> pd.DataFrame:
+    """
+    "dropping duplicates
+    dropping null revenues
+    dropping outliers of less revenue than 1000
+    :param df:
+    :return:
+    """
     df = df.drop_duplicates()
     df = df[df['revenue'].notna()]
     df = df[df['revenue'] >= 1000]
@@ -87,6 +125,8 @@ def handle_belongs_to_collection(df: pd.DataFrame) -> pd.DataFrame:
 def handle_budget(df: pd.DataFrame) -> pd.DataFrame:
     """
     leave budget as it is
+    add log budget feature
+    add budget/runtime rate feature
     :param df:
     :return:
     """
@@ -113,8 +153,8 @@ def handle_homepage(df: pd.DataFrame) -> pd.DataFrame:
     :param df:
     :return:
     """
-    df['has_homepage'] = df['homepage'].apply(lambda x: 0 if pd.isna(x) else 1)
-    df = df.drop('homepage', axis=1)
+    # todo check if needed
+    df['homepage'] = df['homepage'].map(lambda x: 1 if '.com' in str(x) else 0)
     return df
 
 
@@ -125,6 +165,7 @@ def handle_original_languages(df: pd.DataFrame) -> pd.DataFrame:
     :return:
     """
     # todo check most occurrences of languages and change to 1 just on them
+    # df = encode_one_hot(df, 'original_language')
     top_languages = get_top_n_freq_values(df, 5, 'original_language')
     df['original_language'] = df['original_language'].map(lambda x: 1 if x in top_languages else 0)
     return df
@@ -172,31 +213,18 @@ def handle_vote_count(df: pd.DataFrame) -> pd.DataFrame:
 
 
 def handle_production_companies(df: pd.DataFrame) -> pd.DataFrame:
-    """
-    Creates a map from company of production to average vote and average revenue.
-    :param df: data.
-    :return: data['company'] is dropped and instead df['company_id_vote_batch'] and df['company_id_revenue_batch']
-    are added
-    """
-    dic_rev = json.load(open("memory_maps/company_id_map_to_rev.json"))
-    dic_vote = json.load(open("memory_maps/company_id_map_to_vote.json"))
+    # dic = json.load(open("company_id_map.json"))
+    # bad_rows = []
+    # for i in range(len(df)):
+    #     row = df.iloc[i]
+    #     company_id_row = re.sub("[^0-9]", "", row['production_companies'].split(',')[0])
+    #     if company_id_row == '':
+    #         bad_rows.append(i)
+    # df = df.drop(bad_rows, axis=0)
+    #
+    # col = df[col]
+    # company_id_col = col.apply(lambda x: int(re.sub("[^0-9]", "", x.split(',')[0])))
 
-    def score_by_json_st_rev(json_st):
-        company_id_row = re.sub("[^0-9]", "", json_st.split(',')[0])
-        if company_id_row == '':
-            return 1
-        return dic_rev[company_id_row]
-
-    def score_by_json_st_vote(json_st):
-        company_id_row = re.sub("[^0-9]", "", json_st.split(',')[0])
-        if company_id_row == '':
-            return 1
-        return dic_vote[company_id_row]
-
-    df['company_id_revenue_batch'] = df['production_companies'].map(lambda x: score_by_json_st_rev(x))
-    df['company_id_vote_batch'] = df['production_companies'].map(lambda x: score_by_json_st_vote(x))
-    df = df.drop('production_companies', axis=1)
-    plot_corr_heatmap(df)
     return df
 
 
@@ -207,16 +235,19 @@ def handle_production_countries(df: pd.DataFrame) -> pd.DataFrame:
     :return:
     """
     # todo correlate offline and remain top five + one hot
-    df = get_dummies_for_uniques(df, feature="production_countries", value="iso_3166_1")
+    # df = get_dummies_for_uniques(df, feature="production_countries", value="iso_3166_1")
     return df
 
 
 def handle_release_date(df: pd.DataFrame) -> pd.DataFrame:
     """
     adding quarter feature
+    adding year grouped by 5 years
+    adding days past since today
     :param df:
     :return:
     """
+    # todo add decade(5 years) one hot and drop date
     df = df[df['release_date'].notna()]
 
     df['release_date'] = pd.to_datetime(df['release_date'])
@@ -288,12 +319,12 @@ def handle_keywords(df: pd.DataFrame) -> pd.DataFrame:
 
 
 def handle_cast(df: pd.DataFrame) -> pd.DataFrame:
-    df = change_cast_to_actor(df)
+    # todo has superstar? find on internet on hot of this
     return df
 
 
 def handle_crew(df: pd.DataFrame) -> pd.DataFrame:
-    change_crew_to_directors(df)
+    # todo has good director?
     return df
 
 
@@ -322,63 +353,26 @@ def encode_one_hot(df, feature: str):
     df = pd.concat([df, genre_dummies], axis=1)
     return df
 
-# -------------------------- Crew dummies : director ------------------------
+def find_top_five_languages(df, feature: str):
+    list_of_uniques_vals = pd.unique(df[feature])
+    count_dict = {i: 0 for i in list_of_uniques_vals}
+    price_dict = {i: 0 for i in list_of_uniques_vals}
+    for row in df.itertuples():
+        count_dict[row.original_language] += 1
+        price_dict[row.original_language] += row.revenue
+    for lang in list_of_uniques_vals:
+        price_dict[lang] = price_dict[lang] / count_dict[lang]
+    louv = pd.Series(sorted(price_dict, key=price_dict.get))
+    df["top_5"] = (df[feature] == louv[0:5].any())
+    df["worst_5"] = (df[feature] == louv[-5:-1].any())
+    df["top_5"] = df["top_5"].apply(from_bool_to_int)
+    df["worst_5"] = df["worst_5"].apply(from_bool_to_int)
+    return df
 
-def get_directors(x):
-    """classes the directors to classes ,2 is very good 1 is good, 0 is bad"""
-    for i in x:
-        if i['job'] == 'Director':
-            name = i['name']
-            if (name in top_director_dic):
-                return int(math.ceil(top_director_dic[name]/25))
+def from_bool_to_int(bo):
+    if bo == True:
+        return 1
     return 0
-
-
-def change_crew_to_directors(df):
-    """change crew to classes of top directors columns with dummy values
-    (0 -bad, 1 - good, 2 - very good"""
-    df = df[pd.notnull(df['crew'])]
-    df['crew'] = df['crew'].apply(literal_eval)
-    df['crew'] = df['crew'].apply(get_directors)
-    # Change the field ‘crew’ to ‘director’
-    df.rename(columns={'crew': 'director'}, inplace=True)
-
-    return df
-
-# -------------------------- Cast dummies : actor ------------------------
-
-def get_top_actor_list(x):
-    """change the cast column to list of top actors (from 200 actors) """
-    all_actors = ['temp']
-    for i in x:
-        if i['known_for_department'] == 'Acting':
-            name = i['name']
-            if(name in top_actor_set):
-                all_actors.append(i['name'])
-    return all_actors
-
-
-def encode_one_hot_actor(df, feature: str):
-    """change cast list to dummies of 0 and 1 for each top actor
-    will have now 193 new columns"""
-    genres_df = pd.DataFrame(df[feature].tolist())
-    stacked_genres = genres_df.stack()
-    raw_dummies = pd.get_dummies(stacked_genres)
-    genre_dummies = raw_dummies.sum(level=0)
-    df = pd.concat([df, genre_dummies], axis=1)
-    return df
-
-
-def change_cast_to_actor(df):
-    """change cast to 200 top actors columns with dummy values"""
-    df = df[pd.notnull(df['cast'])]
-    df['cast'] = df['cast'].apply(literal_eval)
-    df['cast'] = df['cast'].apply(get_top_actor_list)
-    df = encode_one_hot_actor(df, 'cast')
-    df = df.drop("cast", 1)
-    df = df.drop("temp", 1)
-    return df
-
 
     # for c in ["price", "sqft_living", "sqft_lot", "sqft_above", "yr_built",
     #           "sqft_living15", "sqft_lot15"]:
