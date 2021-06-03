@@ -1,7 +1,8 @@
 import pandas as pd
 import numpy as np
 from ast import literal_eval
-
+import re
+import json
 
 def load_data(filename) -> pd.DataFrame:
     """
@@ -17,8 +18,61 @@ def load_data(filename) -> pd.DataFrame:
 # todo add feature quarter of release
 
 
+def write_ordinal(df, col, delim=','):
+    y = df['revenue']
+    bad_rows = []
+    for i in range(len(df)):
+        row = df.iloc[i]
+        company_id_row = re.sub("[^0-9]", "", row['production_companies'].split(',')[0])
+        if company_id_row == '':
+            bad_rows.append(i)
+    df = df.drop(bad_rows, axis=0)
+
+
+    col = df[col]
+    company_id_col = col.apply(lambda x: int(re.sub("[^0-9]", "", x.split(',')[0])))
+
+
+
+    arr = list(zip(y, company_id_col))
+    dic = {}
+    for rev, comp in arr:
+        if comp not in dic:
+            dic[comp] = [rev, 1]
+        else:
+            dic[comp][0] += rev
+            dic[comp][1] += 1
+    arr = [(k, v[0]/v[1]) for k, v in dic.items()]
+    ids = [t[0] for t in arr]
+    revs = [t[1] for t in arr]
+    splits = np.linspace(min(revs), max(revs), 10)
+    ans = {}
+    for item in arr:
+        company_id = item[0]
+        rev = item[1]
+        for i in range(len(splits) - 1):
+            if splits[i] <= rev <= splits[i+1]:
+                ans[company_id] = i + 1
+                break
+    # print(ans)
+    with open('company_id_map.json', 'w') as fp:
+        json.dump(ans, fp)
+
+
+
+
+
+
+
+
+
+
+
+
 def clean_data(df: pd.DataFrame):
     # dropping duplicates
+    #
+    # write_ordinal(df, 'production_companies')
     df = df.drop_duplicates()
     df = handle_id(df)
     df = handle_belongs_to_collection(df)
@@ -86,6 +140,18 @@ def handle_vote_count(df: pd.DataFrame) -> pd.DataFrame:
 
 
 def handle_production_companies(df: pd.DataFrame) -> pd.DataFrame:
+    # dic = json.load(open("company_id_map.json"))
+    # bad_rows = []
+    # for i in range(len(df)):
+    #     row = df.iloc[i]
+    #     company_id_row = re.sub("[^0-9]", "", row['production_companies'].split(',')[0])
+    #     if company_id_row == '':
+    #         bad_rows.append(i)
+    # df = df.drop(bad_rows, axis=0)
+    #
+    # col = df[col]
+    # company_id_col = col.apply(lambda x: int(re.sub("[^0-9]", "", x.split(',')[0])))
+
     return df
 
 
