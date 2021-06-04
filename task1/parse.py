@@ -2,9 +2,7 @@ import datetime
 import pandas as pd
 
 pd.options.mode.chained_assignment = None  # default='warn'
-import numpy as np
 import pickle
-from ast import literal_eval
 import math
 from task1.utils import *
 
@@ -12,6 +10,8 @@ from task1.utils import *
 MEAN_BUDGET = 23_587_185
 MEAN_RUNTIME = 107
 MEAN_VOTE_COUNT = 1391
+MEAN_REVENUE = 69129572
+MEAN_AVERAGE_VOTE = 6.3
 MEDIAN_DATE = "01/01/2005"
 
 # Global Members
@@ -66,6 +66,12 @@ def clean_data(df: pd.DataFrame, stage='train'):
 
 
 def handle_first(df: pd.DataFrame, stage: str) -> pd.DataFrame:
+    """
+    Handling train stage for duplicates
+    :param df:
+    :param stage:
+    :return:
+    """
     if stage == 'train':
         df = df[df['revenue'].notna()]
         df = df.drop_duplicates()
@@ -94,8 +100,8 @@ def handle_budget(df: pd.DataFrame, stage: str) -> pd.DataFrame:
     df['budget'] = df['budget'].apply(lambda x: 0 if not str(x).isnumeric() else x)
     df['log_budget'] = df['budget'].map(lambda x: 0 if float(x) < 2 else math.log(float(x)))
     df['runtime'].replace(0, MEAN_RUNTIME, inplace=True)
-    df['budget/runtime'] = df['budget'] / df['runtime']
-    df['budget/runtime'].replace([np.inf, -np.inf, np.nan], 0, inplace=True)
+    # df['budget/runtime'] = df['budget'] / df['runtime']
+    # df['budget/runtime'].replace([np.inf, -np.inf, np.nan], 0, inplace=True)
     return df
 
 
@@ -167,6 +173,7 @@ def handle_vote_count(df: pd.DataFrame, stage: str) -> pd.DataFrame:
     """
     df['vote_count'] = df['vote_count'].fillna(value=MEAN_VOTE_COUNT)
     df['vote_count'] = df['vote_count'].apply(lambda x: MEAN_VOTE_COUNT if not str(x).isnumeric() else x)
+    df['vote_sqrt'] = np.sqrt(df['vote_count'])  # found this formula correlated
     return df
 
 
@@ -213,20 +220,14 @@ def handle_release_date(df: pd.DataFrame, stage: str) -> pd.DataFrame:
     """
     if stage == 'train':
         df = df[df['release_date'].notna()]
+    df['release_date'] = df['release_date'].fillna(value=MEDIAN_DATE)
     try:
         df['release_date'] = pd.to_datetime(df['release_date'])
-        # df['quarter'] = df['release_date'].dt.quarter
-        # df['month'] = pd.DatetimeIndex(df['release_date']).month
-        # # plot_corr_heatmap(df)
-        # df['year'] = pd.DatetimeIndex(df['release_date']).year
-        # # adding decade
-        # df['decade'] = df['year'].map(lambda x: x - x % 10)
     except Exception:
-        df['release_date'] = '2005-11-12'
+        df['release_date'] = pd.to_datetime('20050101', format="%Y%m%d", errors='ignore')
     finally:
         df['quarter'] = df['release_date'].dt.quarter
         df['month'] = pd.DatetimeIndex(df['release_date']).month
-        # plot_corr_heatmap(df)
         df['year'] = pd.DatetimeIndex(df['release_date']).year
         df['decade'] = df['year'].map(lambda x: x - x % 10)
 
@@ -338,5 +339,4 @@ def handle_inflation(df: pd.DataFrame) -> pd.DataFrame:
     df['budget_1900'] = df['budget'] / df['usd_1900']
     df = df.drop("temp_year", 1)
     df = df.drop("usd_1900", 1)
-    print(df.corr()['revenue'])
     return df

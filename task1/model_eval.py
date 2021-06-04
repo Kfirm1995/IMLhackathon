@@ -11,7 +11,6 @@ from sklearn.svm import SVR
 from sklearn.tree import DecisionTreeRegressor
 from sklearn.ensemble import RandomForestRegressor
 # import xgboost as xgb
-
 import pickle
 import matplotlib.pyplot as plt
 from task1.parse import *
@@ -53,7 +52,7 @@ def save_mse(fitted_model, model_name, mse, pred_type):
 def main():
     df = load_data("movies_dataset.csv")
     df, y_revenue, y_vote_avg = clean_data(df, stage='train')
-    for i in range(30):
+    for i in range(100):
         linear_regression = LinearRegression()
         random_forest = RandomForestRegressor()
         ridge_regression = Ridge()
@@ -65,7 +64,7 @@ def main():
         all_mse_vote_avg = []
         all_mse_revenue = []
         for pred_type, y_response in zip(['average_vote', 'revenue'], [y_vote_avg, y_revenue]):
-            x_train, x_test, y_train, y_test = train_test_split(df, y_response, test_size=0.10, random_state=42)
+            x_train, x_test, y_train, y_test = train_test_split(df, y_response, test_size=0.5, random_state=42)
             for model, model_name in zip(models, model_names):
                 fitted_model = model.fit(X=x_train, y=y_train)
                 fitted_models.append(fitted_model)
