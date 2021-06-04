@@ -2,9 +2,7 @@ import datetime
 import pandas as pd
 
 pd.options.mode.chained_assignment = None  # default='warn'
-import numpy as np
 import pickle
-from ast import literal_eval
 import math
 from task1.utils import *
 
@@ -12,6 +10,8 @@ from task1.utils import *
 MEAN_BUDGET = 23_587_185
 MEAN_RUNTIME = 107
 MEAN_VOTE_COUNT = 1391
+MEAN_REVENUE = 69129572
+MEAN_AVERAGE_VOTE = 6.3
 MEDIAN_DATE = "01/01/2005"
 
 # Global Members
@@ -37,17 +37,17 @@ def clean_data(df: pd.DataFrame, stage='train'):
     df = handle_first(df, stage)
     df = handle_id(df)
     df = handle_belongs_to_collection(df, stage)
+    df = handle_runtime(df, stage)
     df = handle_budget(df, stage)
     df = handle_genres(df, stage)
     df = handle_homepage(df)
-    df = handle_original_languages(df, stage)
+    df = handle_original_languages(df)
     df = handle_release_date(df, stage)
     df = handle_original_title(df)
     df = handle_overview(df)
     df = handle_vote_count(df, stage)
     df = handle_production_companies(df)
     df = handle_production_countries(df)
-    df = handle_runtime(df)
     df = handle_spoken_languages(df)
     df = handle_status(df, stage)
     df = handle_tagline(df)
@@ -56,18 +56,26 @@ def clean_data(df: pd.DataFrame, stage='train'):
     df = handle_cast(df)
     df = handle_crew(df)
     df = handle_revenue(df)
-    # df = handle_inflation(df)
-    y_revenue = df.revenue
-    y_vote_avg = df.vote_average
-    df = df.drop(['revenue', 'vote_average'], axis=1)
-    return df, y_revenue, y_vote_avg
+    if stage == 'train':
+        y_revenue = df.revenue
+        y_vote_avg = df.vote_average
+        df = df.drop(['revenue', 'vote_average'], axis=1)
+        return df, y_revenue, y_vote_avg
+    else:
+        return df
 
 
 def handle_first(df: pd.DataFrame, stage: str) -> pd.DataFrame:
+    """
+    Handling train stage for duplicates
+    :param df:
+    :param stage:
+    :return:
+    """
     if stage == 'train':
         df = df[df['revenue'].notna()]
         df = df.drop_duplicates()
-        df = df[df['revenue'].apply(lambda x: str(x).isdigit())]
+        df['revenue'] = df['revenue'].apply(lambda x: 0 if not str(x).isnumeric() else x)
         df = df[df['revenue'] >= 1000]
     return df
 
@@ -88,17 +96,12 @@ def handle_budget(df: pd.DataFrame, stage: str) -> pd.DataFrame:
     :param df:
     :return:
     """
-    # removing on training if budget is not a number
-    if stage == 'train':
-        df = df[df['budget'].apply(lambda x: str(x).isdigit())]
-    # else must put default budget
-    else:
-        df['budget'] = df['budget'].apply(lambda x: x if str(x).isdecimal() else MEAN_BUDGET)
-
+    df = df[df['budget'].notna()]
+    df['budget'] = df['budget'].apply(lambda x: 0 if not str(x).isnumeric() else x)
     df['log_budget'] = df['budget'].map(lambda x: 0 if float(x) < 2 else math.log(float(x)))
-    df['runtime'].replace(0, MEAN_RUNTIME, inplace=True)  # ensure outliers
-    df['budget/runtime'] = df['budget'] / df['runtime']
-    df['budget/runtime'].replace([np.inf, -np.inf, np.nan], 0, inplace=True)
+    df['runtime'].replace(0, MEAN_RUNTIME, inplace=True)
+    # df['budget/runtime'] = df['budget'] / df['runtime']
+    # df['budget/runtime'].replace([np.inf, -np.inf, np.nan], 0, inplace=True)
     return df
 
 
@@ -130,17 +133,13 @@ def handle_homepage(df: pd.DataFrame) -> pd.DataFrame:
     return df
 
 
-def handle_original_languages(df: pd.DataFrame, stage: str) -> pd.DataFrame:
+def handle_original_languages(df: pd.DataFrame) -> pd.DataFrame:
     """
     encode onehot by languages (limited by 150)
     :param df:
     :return:
     """
-    if stage == 'train':
-        df = df[df['original_language'].notna()]
-    else:
-        df['original_language'].replace([np.nan], 0, inplace=True)
-
+    df['original_language'] = df['original_language'].fillna("")
     df['original_language'] = df['original_language'].map(lambda x: 1 if x in TOP_ORIGINAL_DIC else 0)
     return df
 
@@ -172,11 +171,9 @@ def handle_vote_count(df: pd.DataFrame, stage: str) -> pd.DataFrame:
     :param stage:
     :return:
     """
-    if stage == 'train':
-        df = df[df['runtime'].notna()]
-
-    df['runtime'].replace(0, MEAN_RUNTIME, inplace=True)  # ensure outliers
-    # df['vote_count/runtime'] = df['vote_count'] / df['runtime']
+    df['vote_count'] = df['vote_count'].fillna(value=MEAN_VOTE_COUNT)
+    df['vote_count'] = df['vote_count'].apply(lambda x: MEAN_VOTE_COUNT if not str(x).isnumeric() else x)
+    df['vote_sqrt'] = np.sqrt(df['vote_count'])  # found this formula correlated
     return df
 
 
@@ -189,10 +186,13 @@ def handle_production_companies(df: pd.DataFrame) -> pd.DataFrame:
     """
 
     def score_by_json_st(json_st, dic: dict):
-        company_id_row = re.sub("[^0-9]", "", json_st.split(',')[0])
-        if company_id_row not in dic:
+        try:
+            company_id_row = re.sub("[^0-9]", "", json_st.split(',')[0])
+            if company_id_row not in dic:
+                return 1
+            return dic[company_id_row]
+        except Exception:
             return 1
-        return dic[company_id_row]
 
     df['company_id_revenue_batch'] = df['production_companies'].map(lambda x: score_by_json_st(x, REV_DIC))
     df['company_id_vote_batch'] = df['production_companies'].map(lambda x: score_by_json_st(x, VOTE_DIC))
@@ -220,31 +220,34 @@ def handle_release_date(df: pd.DataFrame, stage: str) -> pd.DataFrame:
     """
     if stage == 'train':
         df = df[df['release_date'].notna()]
+    df['release_date'] = df['release_date'].fillna(value=MEDIAN_DATE)
+    try:
+        df['release_date'] = pd.to_datetime(df['release_date'])
+    except Exception:
+        df['release_date'] = pd.to_datetime('20050101', format="%Y%m%d", errors='ignore')
+    finally:
+        df['quarter'] = df['release_date'].dt.quarter
+        df['month'] = pd.DatetimeIndex(df['release_date']).month
+        df['year'] = pd.DatetimeIndex(df['release_date']).year
+        df['decade'] = df['year'].map(lambda x: x - x % 10)
 
-    df['release_date'] = pd.to_datetime(df['release_date'])
-    df['quarter'] = df['release_date'].dt.quarter
-    df['month'] = pd.DatetimeIndex(df['release_date']).month
-    df['year'] = pd.DatetimeIndex(df['release_date']).year
-
-    # adding decade
-    df['decade'] = df['year'].map(lambda x: x - x % 10)
-
-    # adding days passed released
     today = datetime.datetime.now()
     df['days_from_release'] = df['release_date'].map(lambda x: (today - pd.to_datetime(x)).days)
-
     df = df.drop("release_date", 1)
-    # df = df.drop("year", 1)
-
     return df
 
 
-def handle_runtime(df: pd.DataFrame) -> pd.DataFrame:
+def handle_runtime(df: pd.DataFrame, stage: str) -> pd.DataFrame:
     """
     very correlated feature, leave it as it is
     :param df:
     :return:
     """
+    if stage == 'train':
+        df = df.dropna(axis=0, subset=['runtime'])
+    else:
+        df['runtime'] = df['runtime'].fillna(value=MEAN_RUNTIME)
+        df['runtime'] = df['runtime'].apply(lambda x: MEAN_RUNTIME if not str(x).isnumeric() else x)
     return df
 
 
@@ -265,9 +268,9 @@ def handle_status(df: pd.DataFrame, stage) -> pd.DataFrame:
     :return:
     """
     if stage == "train":
-        df = df[df['status'] != 'Released']
-        df = df.drop("status", 1)
-
+        df['status'] = df['status'].apply(lambda x: np.nan if x != 'Released' else x)
+        df = df.dropna(axis=0, subset=['status'])
+    df = df.drop("status", 1)
     return df
 
 
@@ -297,7 +300,6 @@ def handle_keywords(df: pd.DataFrame) -> pd.DataFrame:
 
 
 def handle_cast(df: pd.DataFrame) -> pd.DataFrame:
-    # df = change_cast_to_actor(df)
     actors = list(TOP_ACTOR_SET)
     df['cast'] = df['cast'].fillna("[]")
     # dummies of actors
@@ -332,19 +334,9 @@ def handle_inflation(df: pd.DataFrame) -> pd.DataFrame:
     df['temp_year'] = df['temp_year'].apply(lambda x: np.where(int(x) < 1900, x, '1900'))
     df['temp_year'] = df['temp_year'].map(lambda x: float(x) - 1900)
     df['inflation_rate'] = df['temp_year'].map(lambda x: INFLATION_DF.at[int(x), 'inflation_rate'])
-
     df['usd_1900'] = df['temp_year'].map(lambda x: INFLATION_DF.at[min(int(x), 120), 'amount'])
-
     df['usd_1900'].replace(0, 1, inplace=True)
     df['budget_1900'] = df['budget'] / df['usd_1900']
-
     df = df.drop("temp_year", 1)
     df = df.drop("usd_1900", 1)
-    print(df.corr()['revenue'])
     return df
-
-
-
-
-
-
