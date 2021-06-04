@@ -1,5 +1,6 @@
 import datetime
 import pandas as pd
+
 pd.options.mode.chained_assignment = None  # default='warn'
 import numpy as np
 import pickle
@@ -7,14 +8,20 @@ from ast import literal_eval
 import math
 from task1.utils import *
 
-# Global Members
-top_original_dic = json.load(open("memory_maps/top_original_languages.json"))
-rev_dic = json.load(open("memory_maps/company_id_map_to_rev.json"))
-vote_dic = json.load(open("memory_maps/company_id_map_to_vote.json"))
-top_actor_set = pickle.load(open("memory_maps/top_actor_set.pickle", 'rb'))
-top_director_dic = json.load(open("memory_maps/top_director.json", 'r'))
-inflation_df = pd.read_csv("inflation_data.csv")
+# default mean values for outliers
+MEAN_BUDGET = 23_587_185
+MEAN_RUNTIME = 107
+MEAN_VOTE_COUNT = 1391
+MEDIAN_DATE = "01/01/2005"
 
+# Global Members
+TOP_ORIGINAL_DIC = json.load(open("memory_maps/top_original_languages.json"))
+REV_DIC = json.load(open("memory_maps/company_id_map_to_rev.json"))
+VOTE_DIC = json.load(open("memory_maps/company_id_map_to_vote.json"))
+TOP_ACTOR_SET = pickle.load(open("memory_maps/top_actor_set.pickle", 'rb'))
+TOP_ACTOR_DIC = json.load(open("memory_maps/top_director.json", 'r'))
+GENRES_DIC = json.load(open("memory_maps/top_director.json", 'r'))
+INFLATION_DF = pd.read_csv("inflation_data.csv")
 
 
 def load_data(filename) -> pd.DataFrame:
@@ -30,8 +37,9 @@ def clean_data(df: pd.DataFrame, stage='train'):
     df = handle_first(df, stage)
     df = handle_id(df)
     df = handle_belongs_to_collection(df, stage)
-    df = handle_budget(df)
-    df = handle_genres(df)
+    df = handle_runtime(df, stage)
+    df = handle_budget(df, stage)
+    df = handle_genres(df, stage)
     df = handle_homepage(df)
     df = handle_original_languages(df)
     df = handle_release_date(df, stage)
@@ -40,7 +48,6 @@ def clean_data(df: pd.DataFrame, stage='train'):
     df = handle_vote_count(df, stage)
     df = handle_production_companies(df)
     df = handle_production_countries(df)
-    df = handle_runtime(df, stage)
     df = handle_spoken_languages(df)
     df = handle_status(df, stage)
     df = handle_tagline(df)
@@ -77,30 +84,32 @@ def handle_belongs_to_collection(df: pd.DataFrame, stage: str) -> pd.DataFrame:
     return df
 
 
-def handle_budget(df: pd.DataFrame) -> pd.DataFrame:
+def handle_budget(df: pd.DataFrame, stage: str) -> pd.DataFrame:
     """
     leave budget as it is
     :param df:
     :return:
     """
-    # todo add log budget
     df = df[df['budget'].notna()]
     df['budget'] = df['budget'].apply(lambda x: 0 if not str(x).isnumeric() else x)
     df['log_budget'] = df['budget'].map(lambda x: 0 if float(x) < 2 else math.log(float(x)))
+    df['runtime'].replace(0, MEAN_RUNTIME, inplace=True)
+    df['budget/runtime'] = df['budget'] / df['runtime']
+    df['budget/runtime'].replace([np.inf, -np.inf, np.nan], 0, inplace=True)
     return df
 
 
-def handle_genres(df: pd.DataFrame) -> pd.DataFrame:
+def handle_genres(df: pd.DataFrame, stage) -> pd.DataFrame:
     """
     encode one hot by genres
     :param df:
     :return:
     """
+    # validate
+
     df['genres'] = df['genres'].fillna("[]")
-    genres = ['Action', 'Adventure', 'Animation', 'Comedy', 'Crime', 'Documentary', 'Drama', 'Family', 'Fantasy',
-              'History', 'Horror', 'Music', 'Mystery', 'Romance', 'Science Fiction', 'TV Movie', 'Thriller', 'War',
-              'Western']
-    for g in genres:
+
+    for g in GENRES_DIC:
         df[g] = df['genres'].apply(lambda x: 1 if g in x else 0)
 
     df = df.drop("genres", axis=1)
@@ -124,9 +133,8 @@ def handle_original_languages(df: pd.DataFrame) -> pd.DataFrame:
     :param df:
     :return:
     """
-    # todo check most occurrences of languages and change to 1 just on them
     df['original_language'] = df['original_language'].fillna("")
-    df['original_language'] = df['original_language'].map(lambda x: 1 if x in top_original_dic else 0)
+    df['original_language'] = df['original_language'].map(lambda x: 1 if x in TOP_ORIGINAL_DIC else 0)
     return df
 
 
@@ -136,7 +144,6 @@ def handle_original_title(df: pd.DataFrame) -> pd.DataFrame:
     :param df:
     :return:
     """
-    # todo add length of title string and check corellation (maybe drop)
     df = df.drop("original_title", 1)
     return df
 
@@ -158,6 +165,8 @@ def handle_vote_count(df: pd.DataFrame, stage: str) -> pd.DataFrame:
     :param stage:
     :return:
     """
+    df['vote_count'] = df['vote_count'].fillna(value=MEAN_VOTE_COUNT)
+    df['vote_count'] = df['vote_count'].apply(lambda x: MEAN_VOTE_COUNT if not str(x).isnumeric() else x)
     return df
 
 
@@ -178,8 +187,8 @@ def handle_production_companies(df: pd.DataFrame) -> pd.DataFrame:
         except Exception:
             return 1
 
-    df['company_id_revenue_batch'] = df['production_companies'].map(lambda x: score_by_json_st(x, rev_dic))
-    df['company_id_vote_batch'] = df['production_companies'].map(lambda x: score_by_json_st(x, vote_dic))
+    df['company_id_revenue_batch'] = df['production_companies'].map(lambda x: score_by_json_st(x, REV_DIC))
+    df['company_id_vote_batch'] = df['production_companies'].map(lambda x: score_by_json_st(x, VOTE_DIC))
     df = df.drop('production_companies', axis=1)
     return df
 
@@ -236,8 +245,8 @@ def handle_runtime(df: pd.DataFrame, stage: str) -> pd.DataFrame:
     if stage == 'train':
         df = df.dropna(axis=0, subset=['runtime'])
     else:
-        df['runtime'] = df['runtime'].fillna(value=107)
-        df['runtime'] = df['runtime'].apply(lambda x: 107 if not str(x).isnumeric() else x)
+        df['runtime'] = df['runtime'].fillna(value=MEAN_RUNTIME)
+        df['runtime'] = df['runtime'].apply(lambda x: MEAN_RUNTIME if not str(x).isnumeric() else x)
     return df
 
 
@@ -290,8 +299,9 @@ def handle_keywords(df: pd.DataFrame) -> pd.DataFrame:
 
 
 def handle_cast(df: pd.DataFrame) -> pd.DataFrame:
-    actors = list(top_actor_set)
+    actors = list(TOP_ACTOR_SET)
     df['cast'] = df['cast'].fillna("[]")
+    # dummies of actors
     for actor in actors:
         df[actor] = df['cast'].apply(lambda x: 1 if actor in x else 0)
     df = df.drop('cast', axis=1)
@@ -300,8 +310,8 @@ def handle_cast(df: pd.DataFrame) -> pd.DataFrame:
 
 def handle_crew(df: pd.DataFrame) -> pd.DataFrame:
     df['crew'] = df['crew'].fillna("[]")
-    for d in top_director_dic.keys():
-        df[d] = df['crew'].apply(lambda x: math.ceil(top_director_dic[d]/25) if d in x else 0)
+    for d in TOP_ACTOR_DIC.keys():
+        df[d] = df['crew'].apply(lambda x: math.ceil(TOP_ACTOR_DIC[d] / 25) if d in x else 0)
     df = df.drop('crew', axis=1)
     return df
 
@@ -311,11 +321,22 @@ def handle_revenue(df: pd.DataFrame) -> pd.DataFrame:
 
 
 def handle_inflation(df: pd.DataFrame) -> pd.DataFrame:
-    df['temp_year'] = df['year'].map(lambda x: float(x) - 1900)
-    df['inflation_rate'] = df['temp_year'].map(lambda x: inflation_df.at[int(x), 'inflation_rate'])
-    df['usd_1900'] = df['temp_year'].map(lambda x: inflation_df.at[int(x), 'amount'])
+    """
+    create 2 feeatures:
+        1) inflation rate from 1900 to day depend on th eyear of relase
+        2) usd value in rleation to usd value in 1900
+    :param df:
+    :return:
+    """
+    # cleaning year
+    df['temp_year'] = df['year'].apply(lambda x: np.where(str(x).isdigit(), x, '1900'))
+    df['temp_year'] = df['temp_year'].apply(lambda x: np.where(int(x) < 1900, x, '1900'))
+    df['temp_year'] = df['temp_year'].map(lambda x: float(x) - 1900)
+    df['inflation_rate'] = df['temp_year'].map(lambda x: INFLATION_DF.at[int(x), 'inflation_rate'])
+    df['usd_1900'] = df['temp_year'].map(lambda x: INFLATION_DF.at[min(int(x), 120), 'amount'])
+    df['usd_1900'].replace(0, 1, inplace=True)
     df['budget_1900'] = df['budget'] / df['usd_1900']
-    df['usd_1900'] = df['temp_year'].map(lambda x: inflation_df.at[int(x), 'amount'])
     df = df.drop("temp_year", 1)
     df = df.drop("usd_1900", 1)
+    print(df.corr()['revenue'])
     return df

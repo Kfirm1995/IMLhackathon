@@ -67,7 +67,6 @@ def main():
         for pred_type, y_response in zip(['average_vote', 'revenue'], [y_vote_avg, y_revenue]):
             x_train, x_test, y_train, y_test = train_test_split(df, y_response, test_size=0.10, random_state=42)
             for model, model_name in zip(models, model_names):
-
                 fitted_model = model.fit(X=x_train, y=y_train)
                 fitted_models.append(fitted_model)
                 y_pred = fitted_model.predict(x_test)
